@@ -1,11 +1,14 @@
 #ifndef _API_H_
 #define _API_H_
 
+/// @brief The struct of data to be sent over the wire
 struct api_msg {
   /* TODO add information about message */
 };
 
 struct api_state {
+
+  /// @brief File descriptor of socket
   int fd;
   /* TODO add required fields */
 };

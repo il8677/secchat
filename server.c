@@ -60,6 +60,9 @@ error:
   return -1;
 }
 
+/// @brief Slots the child into a free place
+/// @param state the server state
+/// @param worker_fd the file descriptor of the shared channel
 static void child_add(struct server_state *state, int worker_fd) {
   int i;
 
@@ -126,6 +129,9 @@ static void close_server_handles(struct server_state *state) {
   }
 }
 
+/// @brief Handle an incoming connection
+/// @param state The server state
+/// @return 
 static int handle_connection(struct server_state *state) {
   struct sockaddr addr;
   socklen_t addrlen = sizeof(addr);
@@ -195,6 +201,10 @@ static int handle_s2w_closed(struct server_state *state, int index) {
   return 0;
 }
 
+/// @brief Check if worker is trying to notify us through the shared FD
+/// @param state The server state
+/// @param index The index of the worker to check
+/// @return 
 static int handle_w2s_read(struct server_state *state, int index) {
   char buf[256];
   int i;
@@ -225,6 +235,10 @@ static int handle_w2s_read(struct server_state *state, int index) {
   return 0;
 }
 
+/// @brief Notifies worker of pending notification by writing to the shared FD
+/// @param state The server state
+/// @param index Index of the child to notify
+/// @return 
 static int handle_s2w_write(struct server_state *state, int index) {
   char buf = 0;
   ssize_t r;
@@ -269,6 +283,9 @@ static void usage(void) {
   exit(1);
 }
 
+/// @brief Initialize the server state
+/// @param state Uninitialized server state
+/// @return 0 if successful, -1 if not
 static int server_state_init(struct server_state *state) {
   int i;
 
@@ -294,6 +311,9 @@ static void server_state_free(struct server_state *state) {
   }
 }
 
+/// @brief Handle incoming connections / worker notifications
+/// @param state the server state
+/// @return 0 if successful, -1 if not
 static int handle_incoming(struct server_state *state) {
   int fdmax, i, worker_fd, r, success = 1;
   fd_set readfds, writefds;

@@ -204,7 +204,7 @@ static void worker_state_free(
 /**
  * @brief              Worker entry point. Called by the server when a
  *                     worker is spawned.
- * @param connfd       File descriptor for connection socket
+ * @param connfd       File descriptor for connection socket to the client
  * @param pipefd_w2s   File descriptor for pipe to send notifications
  *                     from worker to server
  * @param pipefd_s2w   File descriptor for pipe to send notifications
