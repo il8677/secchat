@@ -1,6 +1,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include <unistd.h>
+
 #include "api.h"
 
 /**
@@ -15,7 +17,13 @@ int api_recv(struct api_state *state, struct api_msg *msg) {
   assert(state);
   assert(msg);
 
-  /* TODO receive a message and store information in *msg */
+  int res = read(state->fd, msg, sizeof(struct api_msg));
+
+  if(res > 0){
+    return 1;
+  }else{
+    return 0;
+  }
 
   return -1;
 }
@@ -27,8 +35,21 @@ int api_recv(struct api_state *state, struct api_msg *msg) {
 void api_recv_free(struct api_msg *msg) {
 
   assert(msg);
+}
 
-  /* TODO clean up state allocated for msg */
+/// @brief Sends msg over the wire
+/// @param state The api state
+/// @param msg The API message
+/// @return -1 if error, 1 if success
+int api_send(struct api_state *state, struct api_msg *msg){
+  assert(state);
+  assert(msg);
+
+  int res = write(state->fd, msg, sizeof(struct api_msg));
+
+  if(res == -1) return -1;
+  
+  return 1;
 }
 
 /**
