@@ -86,7 +86,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, timestamp_
         const char* recipient = (const char*)sqlite3_column_text(statement, 1);
 
         const char* msg = (const char*)sqlite3_column_text(statement, 2);
-        int timestamp = sqlite3_column_int(statement, 3);
+        timestamp_t timestamp = sqlite3_column_int64(statement, 3);
 
         // The offsets should be the same so priv_msg and pub_msg should be equivalent
         row.priv_msg.timestamp = timestamp;
