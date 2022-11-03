@@ -21,7 +21,7 @@ struct worker_state {
  * @brief Reads an incoming notification from the server and notifies
  *        the client.
  */
-static int handle_s2w_notification(struct worker_state *state) {
+static int handle_s2w_notification(struct worker_state* state) {
   /* TODO implement the function */
   return -1;
 }
@@ -33,7 +33,7 @@ static int handle_s2w_notification(struct worker_state *state) {
  */
 /* TODO call this function to notify other workers through server */
 __attribute__((unused))
-static int notify_workers(struct worker_state *state) {
+static int notify_workers(struct worker_state* state) {
   char buf = 0;
   ssize_t r;
 
@@ -54,8 +54,8 @@ static int notify_workers(struct worker_state *state) {
  * @param msg     Message to handle
  */
 static int execute_request(
-  struct worker_state *state,
-  const struct api_msg *msg) {
+  struct worker_state* state,
+  const struct api_msg* msg) {
 
   /* TODO handle request and reply to client */
 
@@ -66,7 +66,7 @@ static int execute_request(
  * @brief         Reads an incoming request from the client and handles it.
  * @param state   Initialized worker state
  */
-static int handle_client_request(struct worker_state *state) {
+static int handle_client_request(struct worker_state* state) {
   struct api_msg msg;
   int r, success = 1;
 
@@ -91,7 +91,7 @@ static int handle_client_request(struct worker_state *state) {
   return success ? 0 : -1;
 }
 
-static int handle_s2w_read(struct worker_state *state) {
+static int handle_s2w_read(struct worker_state* state) {
   char buf[256];
   ssize_t r;
 
@@ -124,7 +124,7 @@ static int handle_s2w_read(struct worker_state *state) {
  *        messages.
  *
  */
-static int handle_incoming(struct worker_state *state) {
+static int handle_incoming(struct worker_state* state) {
   int fdmax, r, success = 1;
   fd_set readfds;
 
@@ -168,7 +168,7 @@ static int handle_incoming(struct worker_state *state) {
  *
  */
 static int worker_state_init(
-  struct worker_state *state,
+  struct worker_state* state,
   int connfd,
   int server_fd) {
 
@@ -190,7 +190,7 @@ static int worker_state_init(
  *
  */
 static void worker_state_free(
-  struct worker_state *state) {
+  struct worker_state* state) {
   /* TODO any additional worker state cleanup */
 
   /* clean up API state */

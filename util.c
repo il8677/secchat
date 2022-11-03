@@ -8,8 +8,8 @@
 
 #include "util.h"
 
-int lookup_host_ipv4(const char *hostname, struct in_addr *addr) {
-  struct hostent *host;
+int lookup_host_ipv4(const char* hostname, struct in_addr* addr) {
+  struct hostent* host;
 
   assert(hostname);
   assert(addr);
@@ -35,8 +35,8 @@ int max(int x, int y) {
   return (x > y) ? x : y;
 }
 
-int parse_port(const char *str, uint16_t *port_p) {
-  char *endptr;
+int parse_port(const char* str, uint16_t* port_p) {
+  char* endptr;
   long value;
 
   assert(str);
@@ -51,6 +51,6 @@ int parse_port(const char *str, uint16_t *port_p) {
   /* is it a valid port number */
   if (value < 0 || value > 65535) return -1;
 
-  *port_p = value;
+ * port_p = value;
   return 0;
 }

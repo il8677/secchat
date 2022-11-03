@@ -20,8 +20,8 @@ struct client_state {
  * @brief Connects to @hostname on port @port and returns the
  *        connection fd. Fails with -1.
  */
-static int client_connect(struct client_state *state,
-  const char *hostname, uint16_t port) {
+static int client_connect(struct client_state* state,
+  const char* hostname, uint16_t port) {
   int fd;
   struct sockaddr_in addr;
 
@@ -50,7 +50,7 @@ static int client_connect(struct client_state *state,
   return fd;
 }
 
-static int client_process_command(struct client_state *state) {
+static int client_process_command(struct client_state* state) {
 
   assert(state);
 
@@ -67,8 +67,8 @@ static int client_process_command(struct client_state *state) {
  * @param msg     Message to handle
  */
 static int execute_request(
-  struct client_state *state,
-  const struct api_msg *msg) {
+  struct client_state* state,
+  const struct api_msg* msg) {
 
   /* TODO handle request and reply to client */
 
@@ -79,7 +79,7 @@ static int execute_request(
  * @brief         Reads an incoming request from the server and handles it.
  * @param state   Initialized client state
  */
-static int handle_server_request(struct client_state *state) {
+static int handle_server_request(struct client_state* state) {
   struct api_msg msg;
   int r, success = 1;
 
@@ -110,7 +110,7 @@ static int handle_server_request(struct client_state *state) {
  *        successfully and -1 otherwise.
  *
  */
-static int handle_incoming(struct client_state *state) {
+static int handle_incoming(struct client_state* state) {
   int fdmax, r;
   fd_set readfds;
 
@@ -147,7 +147,7 @@ static int handle_incoming(struct client_state *state) {
   return 0;
 }
 
-static int client_state_init(struct client_state *state) {
+static int client_state_init(struct client_state* state) {
   /* clear state, invalidate file descriptors */
   memset(state, 0, sizeof(*state));
 
@@ -159,7 +159,7 @@ static int client_state_init(struct client_state *state) {
   return 0;
 }
 
-static void client_state_free(struct client_state *state) {
+static void client_state_free(struct client_state* state) {
 
   /* TODO any additional client state cleanup */
 

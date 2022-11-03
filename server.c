@@ -63,7 +63,7 @@ error:
 /// @brief Slots the child into a free place
 /// @param state the server state
 /// @param worker_fd the file descriptor of the shared channel
-static void child_add(struct server_state *state, int worker_fd) {
+static void child_add(struct server_state* state, int worker_fd) {
   int i;
 
   assert(state);
@@ -83,7 +83,7 @@ static void child_add(struct server_state *state, int worker_fd) {
   abort();
 }
 
-static void children_check(struct server_state *state) {
+static void children_check(struct server_state* state) {
   pid_t pid;
   int status;
 
@@ -115,7 +115,7 @@ static void children_check(struct server_state *state) {
   }
 }
 
-static void close_server_handles(struct server_state *state) {
+static void close_server_handles(struct server_state* state) {
   int i;
 
   assert(state);
@@ -132,7 +132,7 @@ static void close_server_handles(struct server_state *state) {
 /// @brief Handle an incoming connection
 /// @param state The server state
 /// @return 
-static int handle_connection(struct server_state *state) {
+static int handle_connection(struct server_state* state) {
   struct sockaddr addr;
   socklen_t addrlen = sizeof(addr);
   int connfd;
@@ -190,7 +190,7 @@ static int handle_connection(struct server_state *state) {
   return 0;
 }
 
-static int handle_s2w_closed(struct server_state *state, int index) {
+static int handle_s2w_closed(struct server_state* state, int index) {
 
   assert(state->children[index].worker_fd >= 0);
 
@@ -205,7 +205,7 @@ static int handle_s2w_closed(struct server_state *state, int index) {
 /// @param state The server state
 /// @param index The index of the worker to check
 /// @return 
-static int handle_w2s_read(struct server_state *state, int index) {
+static int handle_w2s_read(struct server_state* state, int index) {
   char buf[256];
   int i;
   ssize_t r;
@@ -239,7 +239,7 @@ static int handle_w2s_read(struct server_state *state, int index) {
 /// @param state The server state
 /// @param index Index of the child to notify
 /// @return 
-static int handle_s2w_write(struct server_state *state, int index) {
+static int handle_s2w_write(struct server_state* state, int index) {
   char buf = 0;
   ssize_t r;
 
@@ -286,7 +286,7 @@ static void usage(void) {
 /// @brief Initialize the server state
 /// @param state Uninitialized server state
 /// @return 0 if successful, -1 if not
-static int server_state_init(struct server_state *state) {
+static int server_state_init(struct server_state* state) {
   int i;
 
   /* clear state, invalidate file descriptors */
@@ -301,7 +301,7 @@ static int server_state_init(struct server_state *state) {
   return 0;
 }
 
-static void server_state_free(struct server_state *state) {
+static void server_state_free(struct server_state* state) {
   int i;
 
   /* TODO any additional server state cleanup */
@@ -314,7 +314,7 @@ static void server_state_free(struct server_state *state) {
 /// @brief Handle incoming connections / worker notifications
 /// @param state the server state
 /// @return 0 if successful, -1 if not
-static int handle_incoming(struct server_state *state) {
+static int handle_incoming(struct server_state* state) {
   int fdmax, i, worker_fd, r, success = 1;
   fd_set readfds, writefds;
 

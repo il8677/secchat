@@ -6,7 +6,7 @@
  * @brief         Frees ui_state context
  * @param state   Initialized UI state to be cleaned up
  */
-void ui_state_free(struct ui_state *state) {
+void ui_state_free(struct ui_state* state) {
 
   assert(state);
 
@@ -17,7 +17,7 @@ void ui_state_free(struct ui_state *state) {
  * @brief         Initializes ui_state context
  * @param state   UI state to be initialized
  */
-void ui_state_init(struct ui_state *state) {
+void ui_state_init(struct ui_state* state) {
 
   assert(state);
 
