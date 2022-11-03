@@ -14,7 +14,9 @@ client.o: client.c api.h ui.h util.h
 
 api.o: api.c api.h 
 
-server.o: server.c util.h
+db.o: db.c db.h errcodes.h
+
+server.o: server.c util.h db.h errcodes.h
 
 util.o: util.c util.h
 
@@ -22,7 +24,4 @@ worker.o: worker.c util.h worker.h
 
 client: client.o api.o ui.o util.o
 
-server: server.o api.o util.o worker.o
-
-
-
+server: server.o api.o util.o worker.o db.o
