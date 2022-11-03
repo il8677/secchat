@@ -31,7 +31,6 @@ static int handle_s2w_notification(struct worker_state* state) {
  *                from the client.
  * @param state   Initialized worker state
  */
-/* TODO call this function to notify other workers through server */
 __attribute__((unused))
 static int notify_workers(struct worker_state* state) {
   char buf = 0;
