@@ -34,6 +34,8 @@ int sql_exec(sqlite3* db, const char* x, int (*callback)(void*,int,char**,char**
     return res;
 }
 
+/// @brief Creates a database and tables
+/// @param state db state
 void db_create(struct db_state* state){
     // NOTE: 1 must be subtracted from char lengths because of the null byte
     sqlite3_extended_result_codes(state->db, 1);
@@ -121,16 +123,15 @@ int db_get_messages(struct db_state* state, struct api_state* astate, timestamp_
 /// @brief Returns an ID for name
 /// @param state db state
 /// @param name the name to search for
-/// @return the ID of the name, or ERR_RECIP_INVALID if it doesn't exist
+/// @return the ID of the name, or ERR_NAME_INVALID if it doesn't exist
 int nametoid(struct db_state* state, const char* name){
-    int retvalue = ERR_RECIP_INVALID;
-
+    int retvalue = ERR_NAME_INVALID;
     char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=\"%s\";", name);
-
     sqlite3_stmt* statement;
 
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
 
+    // If there was a result, the name was found
     if(sqlite3_step(statement) == SQLITE_ROW)
         retvalue = sqlite3_column_int(statement, 0);
     
@@ -149,11 +150,11 @@ int verify_login(struct db_state* state, const char* username, const char* passw
     int retvalue = ERR_INCORRECT_LOGIN;
 
     char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=\"%s\" AND password=\"%s\";", username, password);
-
     sqlite3_stmt* statement;
 
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
 
+    // If there was a result, user / password is correct
     if(sqlite3_step(statement) == SQLITE_ROW)
         retvalue = sqlite3_column_int(statement, 0);
     
@@ -171,9 +172,11 @@ int db_add_message(struct db_state* state, struct api_msg* msg, int uid){
     if(msg->type == PRIV_MSG){
         int id = nametoid(state, msg->priv_msg.to);
 
+        // If error
         if(id < 0) return id;
 
         query = sqlite3_mprintf("INSERT INTO messages (sender, recipient, msg) VALUES (%i, %i, \"%s\");", uid, id, msg->priv_msg.msg);
+
     }else if(msg->type == PUB_MSG){
         query = sqlite3_mprintf("INSERT INTO messages (sender, msg) VALUES (%i, \"%s\");", uid, msg->pub_msg.msg);
     }else{
@@ -182,13 +185,10 @@ int db_add_message(struct db_state* state, struct api_msg* msg, int uid){
 
     int res = sql_exec(state->db, query, NULL, NULL);
 
-    if(res != SQLITE_OK) {
         sqlite3_free(query);
+    if(res != SQLITE_OK)
         return ERR_SQL;
-    }
-
-    sqlite3_free(query);
-
+    
     return 0;
 }
 
