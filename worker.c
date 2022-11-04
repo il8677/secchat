@@ -1,3 +1,5 @@
+#include "worker.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -6,19 +8,24 @@
 #include <unistd.h>
 
 #include "api.h"
-#include "util.h"
-#include "worker.h"
-#include "errcodes.h"
 #include "db.h"
+#include "errcodes.h"
+#include "util.h"
 
 struct worker_state {
   struct api_state api;
   int eof;
-  int server_fd;  /* server <-> worker bidirectional notification channel */
+  int server_fd; /* server <-> worker bidirectional notification channel */
   int server_eof;
 
-  int uid;
+  int uid;  // Potential attack surface
+
+  struct db_state dbConn;
 };
+
+static int msg_query_cb(struct api_state* state, struct api_msg* msg){
+  return api_send(state, msg) == 1 ? 0 : -1;
+}
 
 /**
  * @brief Reads an incoming notification from the server and notifies
@@ -26,15 +33,16 @@ struct worker_state {
  */
 static int handle_s2w_notification(struct worker_state* state) {
   /* TODO implement the function */
-  return -1;
-}
+  db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb);
+
+  return 0;
+};
 
 /**
  * @brief         Notifies server that the worker received a new message
  *                from the client.
  * @param state   Initialized worker state
  */
-__attribute__((unused))
 static int notify_workers(struct worker_state* state) {
   char buf = 0;
   ssize_t r;
@@ -54,8 +62,9 @@ static int notify_workers(struct worker_state* state) {
 /// @param state worker state
 /// @param msg request
 /// @return 1 if OK, <0 if error
-static int authenticate_request(struct worker_state* state, struct api_msg* msg){
-  if(0) return ERR_AUTHENTICATION;
+static int authenticate_request(struct worker_state* state,
+                                struct api_msg* msg) {
+  if (0) return ERR_AUTHENTICATION;
 
   return 1;
 }
@@ -64,10 +73,10 @@ static int authenticate_request(struct worker_state* state, struct api_msg* msg)
 /// @param str the string to check
 /// @param len the length of a string
 /// @return 1 if so, 0 otherwise
-static int check_null_byte(const char* str, uint32_t len){
+static int check_null_byte(const char* str, uint32_t len) {
   int hasNullByte = 0;
-  for(int i = len-1; i >= 0; i++){
-    if(str[i] == '\0'){
+  for (int i = len - 1; i >= 0; i++) {
+    if (str[i] == '\0') {
       hasNullByte = 1;
       break;
     }
@@ -79,45 +88,48 @@ static int check_null_byte(const char* str, uint32_t len){
 /// @brief Checks if the client is logged in
 /// @param state worker state
 /// @return 1 if logged in, 0 otherwise
-static int is_logged_in(struct worker_state* state){
-  return state->uid == -1;
-}
+static int is_logged_in(struct worker_state* state) { return state->uid == -1; }
 
 /// @brief Verifies the integrity of a request
 /// @param state worker state
 /// @param msg request
 /// @return 1 if OK, <0 if error
-static int verify_request(struct worker_state* state, struct api_msg* msg){
+static int verify_request(struct worker_state* state, struct api_msg* msg) {
   int res;
 
-  if(!(res = authenticate_request(state, msg))) return res;
+  if (!(res = authenticate_request(state, msg))) return res;
 
   // Type check
-  switch(msg->type){
+  switch (msg->type) {
     case PRIV_MSG:
-      if(!check_null_byte(msg->priv_msg.to, MAX_USER_LEN)) return ERR_INVALID_API_MSG;
+      if (!check_null_byte(msg->priv_msg.to, MAX_USER_LEN))
+        return ERR_INVALID_API_MSG;
     case PUB_MSG:
-      if(!check_null_byte(msg->priv_msg.msg, MAX_MSG_LEN)) return ERR_INVALID_API_MSG;
+      if (!check_null_byte(msg->priv_msg.msg, MAX_MSG_LEN))
+        return ERR_INVALID_API_MSG;
 
     case LOGIN:
     case REG:
-      if(!check_null_byte(msg->reg.username, MAX_USER_LEN)) return ERR_INVALID_API_MSG;
-      if(!check_null_byte(msg->reg.password, MAX_USER_LEN)) return ERR_INVALID_API_MSG;
-    break;
-    
+      if (!check_null_byte(msg->reg.username, MAX_USER_LEN))
+        return ERR_INVALID_API_MSG;
+      if (!check_null_byte(msg->reg.password, MAX_USER_LEN))
+        return ERR_INVALID_API_MSG;
+      break;
+
     case EXIT:
     case WHO:
       break;
 
-    case ERR: // Client cannot send err!
-    case STATUS: // Client cannot send status!
+    case ERR:     // Client cannot send err!
+    case STATUS:  // Client cannot send status!
     default:
-      return ERR_INVALID_API_MSG; 
-    break;
+      return ERR_INVALID_API_MSG;
+      break;
   }
 
-  if(msg->type != LOGIN && msg->type != EXIT){
-    if(!is_logged_in(state)) return ERR_INCORRECT_LOGIN;
+  // User must be logged in unless they're trying to exit or login
+  if (msg->type != LOGIN && msg->type != EXIT) {
+    if (!is_logged_in(state)) return ERR_NO_USER;
   }
 
   return 1;
@@ -127,14 +139,64 @@ static int verify_request(struct worker_state* state, struct api_msg* msg){
  * @brief         Handles a message coming from client
  * @param state   Initialized worker state
  * @param msg     Message to handle
+ * @returns       <0 if error
  */
-static int execute_request(
-  struct worker_state* state,
-  const struct api_msg* msg) {
+static int execute_request(struct worker_state* state,
+                           const struct api_msg* msg) {
+  int res = 0;
+  int doResponse = 0;
 
-  /* TODO handle request and reply to client */
+  struct api_msg responseData;
 
-  return -1;
+  switch (msg->type) {
+    case PRIV_MSG:
+    case PUB_MSG:
+      db_add_message(&state->dbConn, msg, state->uid);
+      notify_workers(state);
+      break;
+    case WHO:
+      // TODO: Who command
+      break;
+    case LOGIN:
+      res = db_login(&state->dbConn, msg);
+
+      if(res >= 0) state->uid = res;
+
+      responseData.type = STATUS;
+      strcpy(responseData.status.statusmsg, "Login successful");
+
+      doResponse = 1;
+      break;
+    
+    case REG: 
+      res = db_register(&state->dbConn, msg);
+
+      if(res >= 0) state->uid = res;
+
+      responseData.type = STATUS;
+      strcpy(responseData.status.statusmsg, "Registration successful");
+      
+      doResponse = 1;
+    break; 
+
+    case EXIT:
+      state->uid = -1;
+      state->eof = 1;
+    break;
+    default:
+      break;
+  }
+
+  // Send error packet
+  if (res < 0) {
+    responseData.type = ERR;
+    responseData.err.errcode = res;
+    api_send(&state->api, &responseData);
+  } else if (doResponse) {
+    api_send(&state->api, &responseData);
+  }
+
+  return res;
 }
 
 /**
@@ -143,7 +205,7 @@ static int execute_request(
  */
 static int handle_client_request(struct worker_state* state) {
   struct api_msg msg;
-  int r, success = 1;
+  int r, errcode = 0;
 
   assert(state);
 
@@ -156,15 +218,14 @@ static int handle_client_request(struct worker_state* state) {
   }
 
   /* execute request */
-  if(verify_request(state, &msg))
-  if (execute_request(state, &msg) != 0) {
-    success = 0;
+  if ((errcode = verify_request(state, &msg)) == 1) {
+    errcode = execute_request(state, &msg);
   }
 
   /* clean up state associated with the message */
   api_recv_free(&msg);
 
-  return success ? 0 : -1;
+  return errcode < 0;
 }
 
 static int handle_s2w_read(struct worker_state* state) {
@@ -215,7 +276,7 @@ static int handle_incoming(struct worker_state* state) {
   fdmax = max(state->api.fd, state->server_fd);
 
   /* wait for at least one to become ready */
-  r = select(fdmax+1, &readfds, NULL, NULL, NULL);
+  r = select(fdmax + 1, &readfds, NULL, NULL, NULL);
   if (r < 0) {
     if (errno == EINTR) return 0;
     perror("error: select failed");
@@ -243,11 +304,8 @@ static int handle_incoming(struct worker_state* state) {
  * @param pipefd_s2w   pipe to be notified by server (can read when notified)
  *
  */
-static int worker_state_init(
-  struct worker_state* state,
-  int connfd,
-  int server_fd) {
-
+static int worker_state_init(struct worker_state* state, int connfd,
+                             int server_fd) {
   /* initialize */
   memset(state, 0, sizeof(*state));
   state->server_fd = server_fd;
@@ -257,6 +315,8 @@ static int worker_state_init(
 
   state->uid = -1;
 
+  db_state_init(&(state->dbConn));
+
   return 0;
 }
 
@@ -265,12 +325,13 @@ static int worker_state_init(
  * @param state        worker state
  *
  */
-static void worker_state_free(
-  struct worker_state* state) {
+static void worker_state_free(struct worker_state* state) {
   /* TODO any additional worker state cleanup */
 
   /* clean up API state */
   api_state_free(&state->api);
+
+  db_state_free(&(state->dbConn));
 
   /* close file descriptors */
   close(state->server_fd);
@@ -286,10 +347,7 @@ static void worker_state_free(
  * @param pipefd_s2w   File descriptor for pipe to send notifications
  *                     from server to worker
  */
-__attribute__((noreturn))
-void worker_start(
-  int connfd,
-  int server_fd) {
+__attribute__((noreturn)) void worker_start(int connfd, int server_fd) {
   struct worker_state state;
   int success = 1;
 

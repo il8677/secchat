@@ -64,7 +64,39 @@ void db_create(struct db_state* state){
     NULL, NULL);
 }
 
-int db_get_messages(struct db_state* state, struct api_state* astate, timestamp_t lastViewed, int uid, int(*cb) (struct api_state*, struct api_msg*)){
+timestamp_t db_get_last_viewed(struct db_state* state, int uid){
+    timestamp_t retvalue = ERR_NO_USER; // User id invalid by default
+
+    char* query = sqlite3_mprintf("SELECT lastviewed FROM users WHERE id=%d;", uid);
+
+    sqlite3_stmt* statement;
+
+    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
+
+    // If there was a result, the timestamp was found
+    if(sqlite3_step(statement) == SQLITE_ROW)
+        retvalue = sqlite3_column_int64(statement, 0);
+    
+
+    sqlite3_finalize(statement);
+    sqlite3_free(query);
+
+    return retvalue;
+}
+
+void db_update_last_viewed(struct db_state* state, int uid){
+    char* query = sqlite3_mprintf("UPDATE users SET lastviewed=(strftime('%s', 'now')) id=%d;", uid);
+
+    sql_exec(state->db, query, NULL, NULL);
+}
+
+int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*)){
+    timestamp_t lastViewed = db_get_last_viewed(state, uid);
+
+    db_update_last_viewed(state, uid); // Do this ASAP to avoid messages that come in between to be unread
+
+    if(lastViewed < 0) return lastViewed;
+
     char* query = sqlite3_mprintf("SELECT su.username, ru.username, msg, timestamp \
                             FROM messages INNER JOIN users AS su ON su.id == sender \
                             LEFT JOIN users AS ru ON ru.id == recipient \
@@ -125,7 +157,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, timestamp_
 /// @param name the name to search for
 /// @return the ID of the name, or ERR_NAME_INVALID if it doesn't exist
 int nametoid(struct db_state* state, const char* name){
-    int retvalue = ERR_NAME_INVALID;
+    int retvalue = ERR_NO_USER; // User id invalid by default
     char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=\"%s\";", name);
     sqlite3_stmt* statement;
 
@@ -166,7 +198,7 @@ int verify_login(struct db_state* state, const char* username, const char* passw
 
 }
 
-int db_add_message(struct db_state* state, struct api_msg* msg, int uid){
+int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
     char* query = NULL;
 
     if(msg->type == PRIV_MSG){
@@ -207,7 +239,7 @@ int db_state_init(struct db_state* state){
     return 0;
 }
 
-int db_register(struct db_state* state, struct api_msg* msg){
+int db_register(struct db_state* state, const struct api_msg* msg){
     if(msg->type != REG) return ERR_INVALID_API_MSG;
 
     char* query = sqlite3_mprintf("INSERT INTO users (username, password) VALUES(\"%s\", \"%s\");", msg->reg.username, msg->reg.password);
@@ -222,7 +254,7 @@ int db_register(struct db_state* state, struct api_msg* msg){
     return nametoid(state, msg->reg.username);
 }
 
-int db_login(struct db_state* state, struct api_msg* msg){
+int db_login(struct db_state* state, const struct api_msg* msg){
     if(msg->type != LOGIN) return ERR_INVALID_API_MSG;
 
     return verify_login(state, msg->login.username, msg->login.password);
