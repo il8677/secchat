@@ -23,6 +23,8 @@ struct worker_state {
   struct db_state dbConn;
 };
 
+#define LOGIF(x, y, ...)if(y<0) printf(x, __VA_ARGS__);
+
 static int msg_query_cb(struct api_state* state, struct api_msg* msg){
   return api_send(state, msg) == 1 ? 0 : -1;
 }
@@ -187,6 +189,8 @@ static int execute_request(struct worker_state* state,
       break;
   }
 
+  LOGIF("[execute_request] error: %d\n", res, res);
+
   // Send error packet
   if (res < 0) {
     responseData.type = ERR;
@@ -221,6 +225,8 @@ static int handle_client_request(struct worker_state* state) {
   if ((errcode = verify_request(state, &msg)) == 1) {
     errcode = execute_request(state, &msg);
   }
+
+  LOGIF("[handle_client_request] error: %d\n", errcode, errcode);
 
   /* clean up state associated with the message */
   api_recv_free(&msg);
