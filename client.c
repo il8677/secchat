@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "api.h"
 #include "ui.h"
@@ -61,6 +62,20 @@ static int client_process_command(struct client_state* state) {
   return -1;
 }
 
+static void status(const struct api_msg * msg){
+  printf("%.*s\n",MAX_MSG_LEN, msg->status.statusmsg);
+}
+static void privMsg(const struct api_msg * msg){
+  printf("%s private message from: %.*s, to: %.*s \n %.*s\n", ctime(&msg->priv_msg.timestamp), MAX_USER_LEN,
+  msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, msg->priv_msg.msg);
+}
+static void pubMsg(const struct api_msg * msg){
+  printf("%s public message from: %.*s\n %.*s\n", ctime(&msg->priv_msg.timestamp), MAX_USER_LEN,
+  msg->priv_msg.from, MAX_MSG_LEN, msg->priv_msg.msg);
+}
+static void who(const struct api_msg * msg){
+  printf("users: %s", msg->who.users);
+}
 /**
  * @brief         Handles a message coming from server (i.e, worker)
  * @param state   Initialized client state
@@ -69,7 +84,28 @@ static int client_process_command(struct client_state* state) {
 static int execute_request(
   struct client_state* state,
   const struct api_msg* msg) {
-
+    assert(state);
+    switch (msg->type)
+    {
+    case ERR:
+      /* code */
+      break;
+    case STATUS:
+      status(msg);
+      break;
+    case PRIV_MSG:
+      privMsg(msg);
+      break;
+    case PUB_MSG:
+      pubMsg(msg);
+      break;
+    case WHO:
+      who(msg);
+      break;
+    default:
+      printf("Some error happened");
+      break;
+    }
   /* TODO handle request and reply to client */
 
   return -1;
@@ -176,7 +212,7 @@ static void usage(void) {
   exit(1);
 }
 
-int main(int argc, char **argv) {
+static main(int argc, char **argv) {
   int fd;
   uint16_t port;
   struct client_state state;

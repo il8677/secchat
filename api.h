@@ -8,7 +8,7 @@
 
 enum msg_type_t { ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, EXIT };
 
-typedef unsigned long timestamp_t;
+typedef signed long timestamp_t;
 
 /// @brief The struct of data to be sent over the wire
 struct api_msg {
