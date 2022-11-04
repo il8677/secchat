@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "api.h"
 #include "ui.h"
@@ -58,7 +59,87 @@ static int client_process_command(struct client_state* state) {
    * set state->eof if there is no more input (read returns zero)
    */
 
-  return -1;
+  char *input;
+  int c;
+  size_t len = 0;
+  size_t size = 16;
+  input = malloc(size);
+  while (EOF != (c = fgetc(stdin)) && c != '\n') {
+    input[len++] = c;
+    if (len == size) {
+      input = realloc(input, sizeof(*input)*(size+=16));
+    }
+  }
+  input[len++] = '\0';
+  input = realloc(input, sizeof(*input)*size);
+
+  //check for too long message
+  if (strlen(input) > MAX_MSG_LEN) { 
+    printf("Message too long, max character amount: %d.\n", MAX_MSG_LEN);
+    free(input);
+    return 0;
+  } else {
+    struct api_msg apimsg;
+    
+    //remove whitespace before msg
+    char *p = input;
+    char *p_end = input + strlen(input);
+    while (p < p_end && isspace(*p)) p++;
+    if (p[0] == '@') {                                  //private msg
+      p++;
+      char *to = strtok(p, " ");
+      char *msg = strtok(NULL, "");
+      
+      apimsg.type = PRIV_MSG;
+      strcpy(apimsg.priv_msg.to, to);
+      strcpy(apimsg.priv_msg.msg, msg);
+      //scrcpy(apimsg.priv_msg.from, state->ui.from) ?? where to get the from name from :)
+      //api_send(&(state->api), &apimsg);
+    } else if (p[0] == '/') {                           //commands:
+      p++;
+      if (strcmp(p, "exit") == 0) {                     //exit
+        apimsg.type = EXIT;
+        state->eof = 1;
+        //api_send(&(state->api), &apimsg); ?? do we need to send the msg_api with an exit also?
+      }
+      else if (strcmp(p, "users") == 0) {               //users
+        apimsg.type = WHO;
+        //api_send(&(state->api), &apimsg);
+      }
+      else {           
+        char *cmd = strtok(p, " ");
+        if (strcmp(cmd, "login") == 0) {                //login
+          char *username = strtok(NULL, " ");
+          char *password = strtok(NULL, " ");
+
+          apimsg.type = LOGIN;
+          strcpy(apimsg.login.username, username);
+          strcpy(apimsg.login.password, password);
+          //api_send(&(state->api), &apimsg);
+          
+        } else if (strcmp(cmd, "register") == 0) {      //register
+          char *username = strtok(NULL, " ");
+          char *password = strtok(NULL, " ");
+
+          apimsg.type = REG;
+          strcpy(apimsg.reg.username, username);
+          strcpy(apimsg.reg.password, password);
+          //api_send(&(state->api), &apimsg);
+
+        } else {
+          printf("Command not recognised.\n");
+        }
+      }
+    } else {                                          //public message
+      apimsg.type = PUB_MSG;
+      strcpy(apimsg.pub_msg.msg, p);
+      //scrcpy(apimsg.pub_msg.from, state->from) ?? same question as with the priv msg, where to get username from
+      //api_send(&(state->api), &apimsg);
+
+    }
+  }
+  free(input);
+  return 0;
 }
 
 /**
