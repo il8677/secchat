@@ -8,13 +8,16 @@
 #include "api.h"
 #include "util.h"
 #include "worker.h"
+#include "errcodes.h"
+#include "db.h"
 
 struct worker_state {
   struct api_state api;
   int eof;
   int server_fd;  /* server <-> worker bidirectional notification channel */
   int server_eof;
-  /* TODO worker state variables go here */
+
+  int uid;
 };
 
 /**
@@ -45,6 +48,79 @@ static int notify_workers(struct worker_state* state) {
     return -1;
   }
   return 0;
+}
+
+/// @brief Verifies the authenticity of a request
+/// @param state worker state
+/// @param msg request
+/// @return 1 if OK, <0 if error
+static int authenticate_request(struct worker_state* state, struct api_msg* msg){
+  if(0) return ERR_AUTHENTICATION;
+
+  return 1;
+}
+
+/// @brief Checks if a string has a null byte
+/// @param str the string to check
+/// @param len the length of a string
+/// @return 1 if so, 0 otherwise
+static int check_null_byte(const char* str, uint32_t len){
+  int hasNullByte = 0;
+  for(int i = len-1; i >= 0; i++){
+    if(str[i] == '\0'){
+      hasNullByte = 1;
+      break;
+    }
+  }
+
+  return hasNullByte;
+}
+
+/// @brief Checks if the client is logged in
+/// @param state worker state
+/// @return 1 if logged in, 0 otherwise
+static int is_logged_in(struct worker_state* state){
+  return state->uid == -1;
+}
+
+/// @brief Verifies the integrity of a request
+/// @param state worker state
+/// @param msg request
+/// @return 1 if OK, <0 if error
+static int verify_request(struct worker_state* state, struct api_msg* msg){
+  int res;
+
+  if(!(res = authenticate_request(state, msg))) return res;
+
+  // Type check
+  switch(msg->type){
+    case PRIV_MSG:
+      if(!check_null_byte(msg->priv_msg.to, MAX_USER_LEN)) return ERR_INVALID_API_MSG;
+    case PUB_MSG:
+      if(!check_null_byte(msg->priv_msg.msg, MAX_MSG_LEN)) return ERR_INVALID_API_MSG;
+
+    case LOGIN:
+    case REG:
+      if(!check_null_byte(msg->reg.username, MAX_USER_LEN)) return ERR_INVALID_API_MSG;
+      if(!check_null_byte(msg->reg.password, MAX_USER_LEN)) return ERR_INVALID_API_MSG;
+    break;
+    
+    case EXIT:
+    case WHO:
+      break;
+
+    case ERR: // Client cannot send err!
+    case STATUS: // Client cannot send status!
+    default:
+      return ERR_INVALID_API_MSG; 
+    break;
+  }
+
+  if(msg->type != LOGIN && msg->type != EXIT){
+    if(!is_logged_in(state)) return ERR_INCORRECT_LOGIN;
+  }
+
+  return 1;
 }
 
 /**
@@ -80,6 +156,7 @@ static int handle_client_request(struct worker_state* state) {
   }
 
   /* execute request */
+  if(verify_request(state, &msg))
   if (execute_request(state, &msg) != 0) {
     success = 0;
   }
@@ -178,7 +255,7 @@ static int worker_state_init(
   /* set up API state */
   api_state_init(&state->api, connfd);
 
-  /* TODO any additional worker state initialization */
+  state->uid = -1;
 
   return 0;
 }
