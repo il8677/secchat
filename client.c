@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <err.h>
 
 #include "api.h"
 #include "ui.h"
@@ -62,6 +63,22 @@ static int client_process_command(struct client_state* state) {
   return -1;
 }
 
+static void error(const struct api_msg *msg){
+  switch (msg->err.errcode)
+  {
+  case ERR_SQL:
+    printf("internal sql error, please try again.");
+    break;
+  case -2:
+    printf("client name unvalid, please try again");
+    break;
+  case -3:
+    printf("");  
+  
+  default:
+    break;
+  }
+}
 static void status(const struct api_msg * msg){
   printf("%.*s\n",MAX_MSG_LEN, msg->status.statusmsg);
 }
@@ -88,7 +105,7 @@ static int execute_request(
     switch (msg->type)
     {
     case ERR:
-      /* code */
+    error(msg);
       break;
     case STATUS:
       status(msg);
