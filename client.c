@@ -9,6 +9,7 @@
 #include "api.h"
 #include "ui.h"
 #include "util.h"
+#include "errcodes.h"
 
 struct client_state {
   struct api_state api;
@@ -55,92 +56,50 @@ static int client_process_command(struct client_state* state) {
 
   assert(state);
 
-  /* TODO read and handle user command from stdin;
-   * set state->eof if there is no more input (read returns zero)
-   */
+  char *input = read_input(16);
+  struct api_msg apimsg;
+  int errcode = 0;
 
-  char *input;
-  int c;
-  size_t len = 0;
-  size_t size = 16;
-  input = malloc(size);
-  while (EOF != (c = fgetc(stdin)) && c != '\n') {
-    input[len++] = c;
-    if (len == size) {
-      input = realloc(input, sizeof(*input)*(size+=16));
+  //remove whitespace at the start of the input 
+  char *p = input;
+  char *p_end = input + strlen(input);
+  while (p < p_end && isspace(*p)) p++;
+  
+  if (p[0] == '@') errcode = input_handle_privmsg(&apimsg, p);
+  else if (p[0] == '/') {                      
+    p++;
+    if (strlen(p) == 0) errcode = ERR_COMMAND_ERROR;
+    else if (strcmp(p, "exit") == 0) { errcode = input_handle_exit(&apimsg, p); state->eof = 1;}
+    else if (strcmp(p, "users") == 0) errcode = input_handle_users(&apimsg, p);
+    else {
+      char *cmd = strtok(p, " ");
+      if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p);
+      else if (strcmp(cmd, "register") == 0) errcode = input_handle_login(&apimsg, p);
+      else errcode = ERR_COMMAND_ERROR;
     }
-  }
-  input[len++] = '\0';
-  input = realloc(input, sizeof(*input)*size);
+  } 
+  else errcode = input_handle_pubmsg(&apimsg, p);
+  
+  if (errcode != 0) {
+    if      (errcode == ERR_COMMAND_ERROR)    printf("--Command not recognised.\n");
+    else if (errcode == ERR_NAME_INVALID)     printf("--Given name is invalid.\n");
+    else if (errcode == ERR_MESSAGE_INVALID)  printf("--Given message is invalid\n");
+    else if (errcode == ERR_MESSAGE_TOOLONG)  printf("--Given message is too long, max number of characters: %d.\n", MAX_MSG_LEN);
+    else if (errcode == ERR_PASSWORD_INVALID) printf("--Given password is invalid.\n");
+    else if (errcode == ERR_USERNAME_TOOLONG) printf("--Given username is too long, max number of characters: %d.\n", MAX_USER_LEN);
+    else if (errcode == ERR_PASSWORD_TOOLONG) printf("--Given password is too long, max number of characters: %d.\n", MAX_USER_LEN);
 
-  //check for too long message
-  if (strlen(input) > MAX_MSG_LEN) { 
-    printf("Message too long, max character amount: %d.\n", MAX_MSG_LEN);
+    free(input);
+    return 0; //CAN BE CHANGED to errcode but for testing this was annoying
+  } else {
+    
+    //api_send(&(state->api), &apimsg); //Commented for testing purposes
     free(input);
     return 0;
-  } else {
-    struct api_msg apimsg;
-    
-    //remove whitespace before msg
-    char *p = input;
-    char *p_end = input + strlen(input);
-    while (p < p_end && isspace(*p)) p++;
-    if (p[0] == '@') {                                  //private msg
-      p++;
-      char *to = strtok(p, " ");
-      char *msg = strtok(NULL, "");
-      
-      apimsg.type = PRIV_MSG;
-      strcpy(apimsg.priv_msg.to, to);
-      strcpy(apimsg.priv_msg.msg, msg);
-      //scrcpy(apimsg.priv_msg.from, state->ui.from) ?? where to get the from name from :)
-      //api_send(&(state->api), &apimsg);
-    } else if (p[0] == '/') {                           //commands:
-      p++;
-      if (strcmp(p, "exit") == 0) {                     //exit
-        apimsg.type = EXIT;
-        state->eof = 1;
-        //api_send(&(state->api), &apimsg); ?? do we need to send the msg_api with an exit also?
-      }
-      else if (strcmp(p, "users") == 0) {               //users
-        apimsg.type = WHO;
-        //api_send(&(state->api), &apimsg);
-      }
-      else {           
-        char *cmd = strtok(p, " ");
-        if (strcmp(cmd, "login") == 0) {                //login
-          char *username = strtok(NULL, " ");
-          char *password = strtok(NULL, " ");
-
-          apimsg.type = LOGIN;
-          strcpy(apimsg.login.username, username);
-          strcpy(apimsg.login.password, password);
-          //api_send(&(state->api), &apimsg);
-          
-        } else if (strcmp(cmd, "register") == 0) {      //register
-          char *username = strtok(NULL, " ");
-          char *password = strtok(NULL, " ");
-
-          apimsg.type = REG;
-          strcpy(apimsg.reg.username, username);
-          strcpy(apimsg.reg.password, password);
-          //api_send(&(state->api), &apimsg);
-
-        } else {
-          printf("Command not recognised.\n");
-        }
-      }
-    } else {                                          //public message
-      apimsg.type = PUB_MSG;
-      strcpy(apimsg.pub_msg.msg, p);
-      //scrcpy(apimsg.pub_msg.from, state->from) ?? same question as with the priv msg, where to get username from
-      //api_send(&(state->api), &apimsg);
-
-    }
   }
-  free(input);
-  return 0;
 }
+  
+
 
 /**
  * @brief         Handles a message coming from server (i.e, worker)
