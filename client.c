@@ -80,15 +80,18 @@ static int client_process_command(struct client_state* state) {
   } 
   else errcode = input_handle_pubmsg(&apimsg, p);
   
-  if (errcode != 0) {
-    if      (errcode == ERR_COMMAND_ERROR)    printf("--Command not recognised.\n");
-    else if (errcode == ERR_NAME_INVALID)     printf("--Given name is invalid.\n");
-    else if (errcode == ERR_MESSAGE_INVALID)  printf("--Given message is invalid\n");
-    else if (errcode == ERR_MESSAGE_TOOLONG)  printf("--Given message is too long, max number of characters: %d.\n", MAX_MSG_LEN);
-    else if (errcode == ERR_PASSWORD_INVALID) printf("--Given password is invalid.\n");
-    else if (errcode == ERR_USERNAME_TOOLONG) printf("--Given username is too long, max number of characters: %d.\n", MAX_USER_LEN);
-    else if (errcode == ERR_PASSWORD_TOOLONG) printf("--Given password is too long, max number of characters: %d.\n", MAX_USER_LEN);
+  
 
+  if (errcode != 0) {
+    switch (errcode) {
+    case ERR_COMMAND_ERROR:    printf("--Command not recognised.\n"); break;
+    case ERR_NAME_INVALID:     printf("--Given name is invalid.\n"); break;
+    case ERR_MESSAGE_INVALID:  printf("--Given message is invalid\n"); break;
+    case ERR_MESSAGE_TOOLONG:  printf("--Given message is too long, max number of characters: %d.\n", MAX_MSG_LEN); break;
+    case ERR_PASSWORD_INVALID: printf("--Given password is invalid.\n"); break;
+    case ERR_USERNAME_TOOLONG: printf("--Given username is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+    case ERR_PASSWORD_TOOLONG: printf("--Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+  }
     free(input);
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying
   } else {

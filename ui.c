@@ -56,10 +56,7 @@ char *read_input(size_t size) {
  * @param msg     Msg of user to check
 */
 int message_too_long(char* msg) {
-  if (strlen(msg) > MAX_MSG_LEN) { 
-    printf("Message too long, max character amount: %d.\n", MAX_MSG_LEN);
-    return 1;
-  } else return 0;  
+  if (strlen(msg) > MAX_MSG_LEN) return 1; else return 0;  
 }
 
 int input_handle_privmsg(struct api_msg* apimsg, char* p) {
