@@ -74,10 +74,14 @@ int input_handle_privmsg(struct api_msg* apimsg, char* p) {
   return 0;
 }
 int input_handle_exit(struct api_msg* apimsg, char* p) {
+  char* tok = strtok(NULL, " ");
+  if (tok != NULL) return ERR_INVALID_NR_ARGS;
   apimsg->type = EXIT;
   return 0;
 }
 int input_handle_users(struct api_msg* apimsg, char* p) {
+  char* tok = strtok(NULL, " ");
+  if (tok != NULL) return ERR_INVALID_NR_ARGS;
   apimsg->type = WHO;
   return 0;
 }
@@ -86,6 +90,8 @@ int input_handle_login(struct api_msg* apimsg, char* p) {
   if (username == NULL) return ERR_NAME_INVALID;
   char *password = strtok(NULL, " ");
   if (password == NULL) return ERR_PASSWORD_INVALID;
+  char* tok = strtok(NULL, " ");
+  if (tok != NULL) return ERR_INVALID_NR_ARGS;
 
   if (strlen(username) > MAX_USER_LEN) return ERR_USERNAME_TOOLONG;
   if (strlen(password) > MAX_USER_LEN) return ERR_PASSWORD_TOOLONG;
@@ -96,15 +102,19 @@ int input_handle_login(struct api_msg* apimsg, char* p) {
   return 0;
 }
 int input_handle_register(struct api_msg* apimsg, char* p) {
+  
   char *username = strtok(NULL, " ");
   if (username == NULL) return ERR_NAME_INVALID;
   char *password = strtok(NULL, " ");
   if (password == NULL) return ERR_PASSWORD_INVALID;
   if (strlen(username) > MAX_USER_LEN) return ERR_USERNAME_TOOLONG;
   if (strlen(password) > MAX_USER_LEN) return ERR_PASSWORD_TOOLONG;
+  char* tok = strtok(NULL, " ");
+  if (tok != NULL) return ERR_INVALID_NR_ARGS;
   apimsg->type = REG;
   strcpy(apimsg->reg.username, username);
   strcpy(apimsg->reg.password, password);
+  
   return 0;
 }
 int input_handle_pubmsg(struct api_msg* apimsg, char* p) {

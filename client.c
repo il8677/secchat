@@ -65,23 +65,28 @@ static int client_process_command(struct client_state* state) {
   char *p_end = input + strlen(input);
   while (p < p_end && isspace(*p)) p++;
   
+  /*
+  char who1[100] = "login";
+  char* tok = strtok(who1, " ");
+  printf("TOK:%s\n", tok);
+  tok = strlen(tok) + strtok(NULL, "");
+  printf("TOK:%s\n", tok); */
+
   if (p[0] == '@') errcode = input_handle_privmsg(&apimsg, p);
   else if (p[0] == '/') {                      
     p++;
-    if (strlen(p) == 0) errcode = ERR_COMMAND_ERROR;
-    else if (strcmp(p, "exit") == 0) { errcode = input_handle_exit(&apimsg, p); state->eof = 1;}
-    else if (strcmp(p, "users") == 0) errcode = input_handle_users(&apimsg, p);
+    if (strlen(p) == 0 || p[0] == ' ') errcode = ERR_COMMAND_ERROR;
     else {
-      char *cmd = strtok(p, " ");
-      if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p);
-      else if (strcmp(cmd, "register") == 0) errcode = input_handle_login(&apimsg, p);
+      char* cmd = strtok(p, " ");
+      if (strcmp(cmd, "exit") == 0) { errcode = input_handle_exit(&apimsg, p); state->eof = 1;}
+      else if (strcmp(cmd, "users") == 0) errcode = input_handle_users(&apimsg, p);
+      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p);
+      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p);
       else errcode = ERR_COMMAND_ERROR;
     }
-  } 
+  }
   else errcode = input_handle_pubmsg(&apimsg, p);
   
-  
-
   if (errcode != 0) {
     switch (errcode) {
     case ERR_COMMAND_ERROR:    printf("--Command not recognised.\n"); break;
@@ -91,6 +96,7 @@ static int client_process_command(struct client_state* state) {
     case ERR_PASSWORD_INVALID: printf("--Given password is invalid.\n"); break;
     case ERR_USERNAME_TOOLONG: printf("--Given username is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
     case ERR_PASSWORD_TOOLONG: printf("--Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+    case ERR_INVALID_NR_ARGS:  printf("--Invalid number of arguments given.\n"); break;
   }
     free(input);
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying

@@ -15,5 +15,6 @@
 #define ERR_PASSWORD_INVALID -11 //Password given by client is invalid
 #define ERR_USERNAME_TOOLONG -12 //Given username is too long
 #define ERR_PASSWORD_TOOLONG -13 //given password is too long
+#define ERR_INVALID_NR_ARGS -14 //too many arguments were given
 
 #endif
