@@ -65,13 +65,6 @@ static int client_process_command(struct client_state* state) {
   char *p_end = input + strlen(input);
   while (p < p_end && isspace(*p)) p++;
   
-  /*
-  char who1[100] = "login";
-  char* tok = strtok(who1, " ");
-  printf("TOK:%s\n", tok);
-  tok = strlen(tok) + strtok(NULL, "");
-  printf("TOK:%s\n", tok); */
-
   if (p[0] == '@') errcode = input_handle_privmsg(&apimsg, p);
   else if (p[0] == '/') {                      
     p++;
