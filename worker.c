@@ -34,7 +34,6 @@ static int msg_query_cb(struct api_state* state, struct api_msg* msg){
  *        the client.
  */
 static int handle_s2w_notification(struct worker_state* state) {
-  /* TODO implement the function */
   db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb);
 
   return 0;
@@ -130,7 +129,7 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
   }
 
   // User must be logged in unless they're trying to exit or login
-  if (msg->type != LOGIN && msg->type != EXIT) {
+  if (msg->type != LOGIN && msg->type != EXIT && msg->type != REG) {
     if (!is_logged_in(state)) return ERR_NO_USER;
   }
 
@@ -169,6 +168,8 @@ static int execute_request(struct worker_state* state,
         strcpy(responseData.status.statusmsg, "Login successful");
 
         doResponse = 1;
+       db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); // TODO: Login function
+
       } 
         
 
@@ -184,6 +185,7 @@ static int execute_request(struct worker_state* state,
         strcpy(responseData.status.statusmsg, "Registration successful");
         
         doResponse = 1;
+       db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); // TODO: Login function
       }
     break; 
 
@@ -228,7 +230,7 @@ static int handle_client_request(struct worker_state* state) {
     errcode = execute_request(state, &msg);
   }
 
-  LOGIF("[handle_client_request] error: %d\n", errcode);
+  LOGIF("[handle_client_request] error: %d\n", errcode, errcode);
 
   // Send error packet
   if (errcode < 0) {
