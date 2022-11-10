@@ -107,16 +107,29 @@ static int client_process_command(struct client_state* state) {
 static void error(const struct api_msg *msg){
   switch (msg->err.errcode)
   {
-  case ERR_SQL:
-    printf("internal sql error, please try again.");
+  case -1:
+    printf("Internal sql error, please try again.\n");
     break;
   case -2:
-    printf("client name unvalid, please try again");
+    printf("Client name unvalid, please try again\n");
     break;
   case -3:
-    printf("");  
-  
+    printf("Internal server error, please try again\n");  
+    break;
+  case -4:
+    printf("Username is already taken, please choose a different username.\n");
+    break;
+  case -5:
+    prinft("Incorrect username and password combination, please try again.\n");
+    break;
+  case -6:
+    printf("Authentication error, please try again.\n");
+    break;
+  case -7:
+    printf("Please log in before using any commands.\n");
+    break;      
   default:
+    printf("unknown error, please try again.");
     break;
   }
 }
@@ -132,7 +145,7 @@ static void pubMsg(const struct api_msg * msg){
   msg->priv_msg.from, MAX_MSG_LEN, msg->priv_msg.msg);
 }
 static void who(const struct api_msg * msg){
-  printf("users: %s", msg->who.users);
+  printf("users: %s\n", msg->who.users);
 }
 /**
  * @brief         Handles a message coming from server (i.e, worker)
