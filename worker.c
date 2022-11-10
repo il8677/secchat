@@ -90,7 +90,7 @@ static int check_null_byte(const char* str, uint32_t len) {
 /// @brief Checks if the client is logged in
 /// @param state worker state
 /// @return 1 if logged in, 0 otherwise
-static int is_logged_in(struct worker_state* state) { return state->uid == -1; }
+static int is_logged_in(struct worker_state* state) { return state->uid != -1; }
 
 /// @brief Verifies the integrity of a request
 /// @param state worker state
