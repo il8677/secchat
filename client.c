@@ -281,7 +281,7 @@ static void usage(void) {
   printf("  client host port\n");
   exit(1);
 }
-
+int main(int argc, char **argv) {
 static main(int argc, char **argv) {
   int fd;
   uint16_t port;
