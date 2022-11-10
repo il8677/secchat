@@ -163,6 +163,7 @@ static int execute_request(struct worker_state* state,
       res = db_login(&state->dbConn, msg);
 
       if(res >= 0){
+        printf("[execute_request] User %d logged in\n", res);
         state->uid = res;
         responseData.type = STATUS;
         strcpy(responseData.status.statusmsg, "Login successful");
