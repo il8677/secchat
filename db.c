@@ -24,7 +24,9 @@
 /// @return 0 if ok, a SQL error code otherwise
 int sql_exec(sqlite3* db, const char* x, int (*callback)(void*,int,char**,char**), void* userdata) {
     char* errmsg = NULL;
-    int res = sqlite3_exec(db, x, callback, userdata, &errmsg);
+    int res = SQLITE_BUSY;
+
+    while(res == SQLITE_BUSY) res = sqlite3_exec(db, x, callback, userdata, &errmsg);
 
     if(res != SQLITE_OK){
         fprintf(stderr, "Error running %s\n\t%s\n", x, errmsg);

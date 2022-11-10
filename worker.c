@@ -34,7 +34,6 @@ static int msg_query_cb(struct api_state* state, struct api_msg* msg){
  *        the client.
  */
 static int handle_s2w_notification(struct worker_state* state) {
-  /* TODO implement the function */
   db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb);
 
   return 0;
@@ -169,6 +168,8 @@ static int execute_request(struct worker_state* state,
         strcpy(responseData.status.statusmsg, "Login successful");
 
         doResponse = 1;
+       db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); // TODO: Login function
+
       } 
         
 
@@ -184,6 +185,7 @@ static int execute_request(struct worker_state* state,
         strcpy(responseData.status.statusmsg, "Registration successful");
         
         doResponse = 1;
+       db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); // TODO: Login function
       }
     break; 
 
