@@ -97,7 +97,7 @@ static int client_process_command(struct client_state* state) {
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying
   } else {
     
-    //api_send(&(state->api), &apimsg); //Commented for testing purposes
+    api_send(&(state->api), &apimsg); //Commented for testing purposes
     free(input);
     return 0;
   }
@@ -179,7 +179,7 @@ static int execute_request(
     }
   /* TODO handle request and reply to client */
 
-  return -1;
+  return 0;
 }
 
 /**
@@ -196,6 +196,7 @@ static int handle_server_request(struct client_state* state) {
   r = api_recv(&state->api, &msg);
   if (r < 0) return -1;
   if (r == 0) {
+    printf("client receive eof\n");
     state->eof = 1;
     return 0;
   }
@@ -207,7 +208,6 @@ static int handle_server_request(struct client_state* state) {
 
   /* clean up state associated with the message */
   api_recv_free(&msg);
-
   return success ? 0 : -1;
 }
 

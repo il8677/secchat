@@ -217,6 +217,7 @@ static int handle_client_request(struct worker_state* state) {
   r = api_recv(&state->api, &msg);
   if (r < 0) return -1;
   if (r == 0) {
+    printf("server receive eof\n");
     state->eof = 1;
     return 0;
   }
@@ -299,7 +300,7 @@ static int handle_incoming(struct worker_state* state) {
   if (FD_ISSET(state->server_fd, &readfds)) {
     if (handle_s2w_read(state) != 0) success = 0;
   }
-  return success ? 0 : -1;
+  return success ? 0 : 0;
 }
 
 /**
@@ -375,6 +376,6 @@ cleanup:
   /* cleanup worker */
   /* TODO any additional worker cleanup */
   worker_state_free(&state);
-
+  printf("Cleanup %d\n", state.eof);
   exit(success ? 0 : 1);
 }
