@@ -9,6 +9,7 @@
 #define ERR_AUTHENTICATION -6 // Message could not be authenticated
 #define ERR_NO_USER -7 //Not logged in
 
+
 #define ERR_COMMAND_ERROR -8 //Command is not recognised
 #define ERR_MESSAGE_INVALID -9 //Messsage given by client is invalid
 #define ERR_MESSAGE_TOOLONG -10 //Message given by client is too long
