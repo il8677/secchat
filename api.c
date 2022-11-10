@@ -41,6 +41,7 @@ void api_recv_free(struct api_msg* msg) {
 /// @param state The api state
 /// @param msg The API message
 /// @return -1 if error, 1 if success
+
 int api_send(struct api_state* state, struct api_msg* msg){
   assert(state);
   assert(msg);

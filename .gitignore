@@ -9,3 +9,5 @@ client
 
 *.db
 *.sql
+
+main.c
