@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
+#include <err.h>
 
 #include "api.h"
 #include "ui.h"
@@ -54,13 +56,82 @@ static int client_process_command(struct client_state* state) {
 
   assert(state);
 
-  /* TODO read and handle user command from stdin;
-   * set state->eof if there is no more input (read returns zero)
-   */
+  char *input = read_input(16);
+  struct api_msg apimsg;
+  int errcode = 0;
 
-  return -1;
+  //remove whitespace at the start of the input 
+  char *p = input;
+  char *p_end = input + strlen(input);
+  while (p < p_end && isspace(*p)) p++;
+  
+  if (p[0] == '@') errcode = input_handle_privmsg(&apimsg, p);
+  else if (p[0] == '/') {                      
+    p++;
+    if (strlen(p) == 0 || p[0] == ' ') errcode = ERR_COMMAND_ERROR;
+    else {
+      char* cmd = strtok(p, " ");
+      if (strcmp(cmd, "exit") == 0) { errcode = input_handle_exit(&apimsg, p); state->eof = 1;}
+      else if (strcmp(cmd, "users") == 0) errcode = input_handle_users(&apimsg, p);
+      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p);
+      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p);
+      else errcode = ERR_COMMAND_ERROR;
+    }
+  }
+  else errcode = input_handle_pubmsg(&apimsg, p);
+  
+  if (errcode != 0) {
+    switch (errcode) {
+    case ERR_COMMAND_ERROR:    printf("--Command not recognised.\n"); break;
+    case ERR_NAME_INVALID:     printf("--Given name is invalid.\n"); break;
+    case ERR_MESSAGE_INVALID:  printf("--Given message is invalid\n"); break;
+    case ERR_MESSAGE_TOOLONG:  printf("--Given message is too long, max number of characters: %d.\n", MAX_MSG_LEN); break;
+    case ERR_PASSWORD_INVALID: printf("--Given password is invalid.\n"); break;
+    case ERR_USERNAME_TOOLONG: printf("--Given username is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+    case ERR_PASSWORD_TOOLONG: printf("--Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+    case ERR_INVALID_NR_ARGS:  printf("--Invalid number of arguments given.\n"); break;
+  }
+    free(input);
+    return 0; //CAN BE CHANGED to errcode but for testing this was annoying
+  } else {
+    
+    //api_send(&(state->api), &apimsg); //Commented for testing purposes
+    free(input);
+    return 0;
+  }
 }
+  
 
+static void error(const struct api_msg *msg){
+  switch (msg->err.errcode)
+  {
+  case ERR_SQL:
+    printf("internal sql error, please try again.");
+    break;
+  case -2:
+    printf("client name unvalid, please try again");
+    break;
+  case -3:
+    printf("");  
+  
+  default:
+    break;
+  }
+}
+static void status(const struct api_msg * msg){
+  printf("%.*s\n",MAX_MSG_LEN, msg->status.statusmsg);
+}
+static void privMsg(const struct api_msg * msg){
+  printf("%s private message from: %.*s, to: %.*s \n %.*s\n", ctime(&msg->priv_msg.timestamp), MAX_USER_LEN,
+  msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, msg->priv_msg.msg);
+}
+static void pubMsg(const struct api_msg * msg){
+  printf("%s public message from: %.*s\n %.*s\n", ctime(&msg->priv_msg.timestamp), MAX_USER_LEN,
+  msg->priv_msg.from, MAX_MSG_LEN, msg->priv_msg.msg);
+}
+static void who(const struct api_msg * msg){
+  printf("users: %s", msg->who.users);
+}
 /**
  * @brief         Handles a message coming from server (i.e, worker)
  * @param state   Initialized client state
@@ -69,7 +140,28 @@ static int client_process_command(struct client_state* state) {
 static int execute_request(
   struct client_state* state,
   const struct api_msg* msg) {
-
+    assert(state);
+    switch (msg->type)
+    {
+    case ERR:
+    error(msg);
+      break;
+    case STATUS:
+      status(msg);
+      break;
+    case PRIV_MSG:
+      privMsg(msg);
+      break;
+    case PUB_MSG:
+      pubMsg(msg);
+      break;
+    case WHO:
+      who(msg);
+      break;
+    default:
+      printf("Some error happened");
+      break;
+    }
   /* TODO handle request and reply to client */
 
   return -1;
@@ -176,7 +268,7 @@ static void usage(void) {
   exit(1);
 }
 
-int main(int argc, char **argv) {
+static main(int argc, char **argv) {
   int fd;
   uint16_t port;
   struct client_state state;
