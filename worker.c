@@ -162,12 +162,15 @@ static int execute_request(struct worker_state* state,
     case LOGIN:
       res = db_login(&state->dbConn, msg);
 
-      if(res >= 0) state->uid = res;
+      if(res >= 0){
+        state->uid = res;
+        responseData.type = STATUS;
+        strcpy(responseData.status.statusmsg, "Login successful");
 
-      responseData.type = STATUS;
-      strcpy(responseData.status.statusmsg, "Login successful");
+        doResponse = 1;
+      } 
+        
 
-      doResponse = 1;
       break;
     
     case REG: 
@@ -299,7 +302,7 @@ static int handle_incoming(struct worker_state* state) {
   if (FD_ISSET(state->server_fd, &readfds)) {
     if (handle_s2w_read(state) != 0) success = 0;
   }
-  return success ? 0 : -1;
+  return 0;
 }
 
 /**
