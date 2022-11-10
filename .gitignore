@@ -6,4 +6,8 @@
 
 server
 client
-main..c
+
+*.db
+*.sql
+
+main.c
