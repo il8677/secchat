@@ -176,12 +176,14 @@ static int execute_request(struct worker_state* state,
     case REG: 
       res = db_register(&state->dbConn, msg);
 
-      if(res >= 0) state->uid = res;
+      if(res >= 0){ 
+        state->uid = res;
 
-      responseData.type = STATUS;
-      strcpy(responseData.status.statusmsg, "Registration successful");
-      
-      doResponse = 1;
+        responseData.type = STATUS;
+        strcpy(responseData.status.statusmsg, "Registration successful");
+        
+        doResponse = 1;
+      }
     break; 
 
     case EXIT:
@@ -194,12 +196,7 @@ static int execute_request(struct worker_state* state,
 
   LOGIF("[execute_request] error: %d\n", res, res);
 
-  // Send error packet
-  if (res < 0) {
-    responseData.type = ERR;
-    responseData.err.errcode = res;
-    api_send(&state->api, &responseData);
-  } else if (doResponse) {
+  if (doResponse) {
     api_send(&state->api, &responseData);
   }
 
@@ -230,8 +227,15 @@ static int handle_client_request(struct worker_state* state) {
     errcode = execute_request(state, &msg);
   }
 
-  LOGIF("[handle_client_request] error: %d\n", errcode, errcode);
+  LOGIF("[handle_client_request] error: %d\n", errcode);
 
+  // Send error packet
+  if (errcode < 0) {
+    struct api_msg responseData;
+    responseData.type = ERR;
+    responseData.err.errcode = errcode;
+    api_send(&state->api, &responseData);
+  } 
   /* clean up state associated with the message */
   api_recv_free(&msg);
 
