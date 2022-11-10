@@ -10,6 +10,7 @@
 #include "api.h"
 #include "ui.h"
 #include "util.h"
+#include "errcodes.h"
 
 struct client_state {
   struct api_state api;
@@ -105,25 +106,25 @@ static int client_process_command(struct client_state* state) {
 static void error(const struct api_msg *msg){
   switch (msg->err.errcode)
   {
-  case -1:
+  case ERR_SQL:
     printf("Internal sql error, please try again.\n");
     break;
-  case -2:
+  case ERR_NAME_INVALID:
     printf("Client name unvalid, please try again\n");
     break;
-  case -3:
+  case ERR_INVALID_API_MSG:
     printf("Internal server error, please try again\n");  
     break;
-  case -4:
+  case ERR_USERNAME_EXISTS:
     printf("Username is already taken, please choose a different username.\n");
     break;
-  case -5:
+  case ERR_INCORRECT_LOGIN:
     prinft("Incorrect username and password combination, please try again.\n");
     break;
-  case -6:
+  case ERR_AUTHENTICATION:
     printf("Authentication error, please try again.\n");
     break;
-  case -7:
+  case ERR_NO_USER:
     printf("Please log in before using any commands.\n");
     break;      
   default:
