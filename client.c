@@ -137,15 +137,15 @@ static void status(const struct api_msg * msg){
   printf("%.*s\n",MAX_MSG_LEN, msg->status.statusmsg);
 }
 static void privMsg(const struct api_msg * msg){
-  char *ctime_no_newline;
-  ctime_no_newline = strtok(ctime(&msg->priv_msg.timestamp), "\n");
-  printf("%s private message from: %.*s, to: %.*s \n %.*s\n", ctime_no_newline, MAX_USER_LEN,
+  char *ctime_no_newline = strtok(ctime(&msg->priv_msg.timestamp), "\n");
+
+  printf("%s %.*s, @%.*s \n %.*s\n", ctime_no_newline, MAX_USER_LEN,
   msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, msg->priv_msg.msg);
 }
 static void pubMsg(const struct api_msg * msg){
-  char *ctime_no_newline;
-  ctime_no_newline = strtok(ctime(&msg->pub_msg.timestamp), "\n");
-  printf("%s public message from: %.*s\n %.*s\n", ctime_no_newline, MAX_USER_LEN,
+  char *ctime_no_newline = strtok(ctime(&msg->pub_msg.timestamp), "\n");
+
+  printf("%s %.*s: %.*s\n", ctime_no_newline, MAX_USER_LEN,
   msg->pub_msg.from, MAX_MSG_LEN, msg->pub_msg.msg);
 }
 static void who(const struct api_msg * msg){
