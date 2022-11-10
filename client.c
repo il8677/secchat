@@ -6,10 +6,12 @@
 #include <unistd.h>
 #include <time.h>
 #include <err.h>
+#include <ctype.h>
 
 #include "api.h"
 #include "ui.h"
 #include "util.h"
+#include "errcodes.h"
 
 struct client_state {
   struct api_state api;
