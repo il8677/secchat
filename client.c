@@ -4,10 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "api.h"
 #include "ui.h"
 #include "util.h"
+#include "errcodes.h"
 
 struct client_state {
   struct api_state api;
@@ -54,12 +56,52 @@ static int client_process_command(struct client_state* state) {
 
   assert(state);
 
-  /* TODO read and handle user command from stdin;
-   * set state->eof if there is no more input (read returns zero)
-   */
+  char *input = read_input(16);
+  struct api_msg apimsg;
+  int errcode = 0;
 
-  return -1;
+  //remove whitespace at the start of the input 
+  char *p = input;
+  char *p_end = input + strlen(input);
+  while (p < p_end && isspace(*p)) p++;
+  
+  if (p[0] == '@') errcode = input_handle_privmsg(&apimsg, p);
+  else if (p[0] == '/') {                      
+    p++;
+    if (strlen(p) == 0 || p[0] == ' ') errcode = ERR_COMMAND_ERROR;
+    else {
+      char* cmd = strtok(p, " ");
+      if (strcmp(cmd, "exit") == 0) { errcode = input_handle_exit(&apimsg, p); state->eof = 1;}
+      else if (strcmp(cmd, "users") == 0) errcode = input_handle_users(&apimsg, p);
+      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p);
+      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p);
+      else errcode = ERR_COMMAND_ERROR;
+    }
+  }
+  else errcode = input_handle_pubmsg(&apimsg, p);
+  
+  if (errcode != 0) {
+    switch (errcode) {
+    case ERR_COMMAND_ERROR:    printf("--Command not recognised.\n"); break;
+    case ERR_NAME_INVALID:     printf("--Given name is invalid.\n"); break;
+    case ERR_MESSAGE_INVALID:  printf("--Given message is invalid\n"); break;
+    case ERR_MESSAGE_TOOLONG:  printf("--Given message is too long, max number of characters: %d.\n", MAX_MSG_LEN); break;
+    case ERR_PASSWORD_INVALID: printf("--Given password is invalid.\n"); break;
+    case ERR_USERNAME_TOOLONG: printf("--Given username is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+    case ERR_PASSWORD_TOOLONG: printf("--Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+    case ERR_INVALID_NR_ARGS:  printf("--Invalid number of arguments given.\n"); break;
+  }
+    free(input);
+    return 0; //CAN BE CHANGED to errcode but for testing this was annoying
+  } else {
+    
+    //api_send(&(state->api), &apimsg); //Commented for testing purposes
+    free(input);
+    return 0;
+  }
 }
+  
+
 
 /**
  * @brief         Handles a message coming from server (i.e, worker)
