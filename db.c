@@ -85,9 +85,11 @@ timestamp_t db_get_last_viewed(struct db_state* state, int uid){
 }
 
 void db_update_last_viewed(struct db_state* state, int uid){
-    char* query = sqlite3_mprintf("UPDATE users SET lastviewed=(strftime('%s', 'now')) id=%d;", uid);
+    char* query = sqlite3_mprintf("UPDATE users SET lastviewed=(strftime('%s', 'now')) WHERE id=%d;", "%s", uid);
 
     sql_exec(state->db, query, NULL, NULL);
+
+    sqlite3_free(query);
 }
 
 int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*)){

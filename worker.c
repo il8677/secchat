@@ -130,7 +130,7 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
   }
 
   // User must be logged in unless they're trying to exit or login
-  if (msg->type != LOGIN && msg->type != EXIT) {
+  if (msg->type != LOGIN && msg->type != EXIT && msg->type != REG) {
     if (!is_logged_in(state)) return ERR_NO_USER;
   }
 
@@ -228,7 +228,7 @@ static int handle_client_request(struct worker_state* state) {
     errcode = execute_request(state, &msg);
   }
 
-  LOGIF("[handle_client_request] error: %d\n", errcode);
+  LOGIF("[handle_client_request] error: %d\n", errcode, errcode);
 
   // Send error packet
   if (errcode < 0) {

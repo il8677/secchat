@@ -201,7 +201,7 @@ static int handle_server_request(struct client_state* state) {
     return 0;
   }
 
-  printf("[handle_server_request] incoming packet %d\n", msg.type);
+  //printf("[handle_server_request] incoming packet %d\n", msg.type);
 
   /* execute request */
   if (execute_request(state, &msg) != 0) {
