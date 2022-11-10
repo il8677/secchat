@@ -120,7 +120,7 @@ static void error(const struct api_msg *msg){
     printf("Username is already taken, please choose a different username.\n");
     break;
   case -5:
-    prinft("Incorrect username and password combination, please try again.\n");
+    printf("Incorrect username and password combination, please try again.\n");
     break;
   case -6:
     printf("Authentication error, please try again.\n");
@@ -283,7 +283,7 @@ static void usage(void) {
   exit(1);
 }
 
-static main(int argc, char **argv) {
+int main(int argc, char **argv) {
   int fd;
   uint16_t port;
   struct client_state state;
