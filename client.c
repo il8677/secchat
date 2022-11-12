@@ -117,16 +117,16 @@ static void error(const struct api_msg *msg){
     printf("Internal server error, please try again\n");  
     break;
   case ERR_USERNAME_EXISTS:
-    printf("Username is already taken, please choose a different username.\n");
+    printf("user %s already exists.\n", msg->login.username);
     break;
   case ERR_INCORRECT_LOGIN:
-    printf("Incorrect username and password combination, please try again.\n");
+    printf("invalid credentials\n");
     break;
   case ERR_AUTHENTICATION:
     printf("Authentication error, please try again.\n");
     break;
   case ERR_NO_USER:
-    printf("Please log in before using any commands.\n");
+    printf("user is not currently logged in\n");
     break;      
   default:
     printf("unknown error, please try again.");
