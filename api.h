@@ -21,7 +21,7 @@ struct api_msg {
   enum msg_type_t type;
 
   char errcode;
-  
+
   union {
     struct {
       char statusmsg[MAX_MSG_LEN];
@@ -66,7 +66,6 @@ struct api_msg {
 struct api_state {
   /// @brief File descriptor of socket
   int fd;
-  /* TODO add required fields */
 };
 
 int api_recv(struct api_state* state, struct api_msg* msg);
@@ -75,7 +74,5 @@ int api_send(struct api_state* state, struct api_msg* msg);
 
 void api_state_free(struct api_state* state);
 void api_state_init(struct api_state* state, int fd);
-
-/* TODO add API calls to send messages to perform client-server interactions */
 
 #endif /* defined(_API_H_) */

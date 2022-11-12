@@ -340,8 +340,6 @@ static int worker_state_init(struct worker_state* state, int connfd,
  *
  */
 static void worker_state_free(struct worker_state* state) {
-  /* TODO any additional worker state cleanup */
-
   /* clean up API state */
   api_state_free(&state->api);
 
@@ -369,7 +367,6 @@ __attribute__((noreturn)) void worker_start(int connfd, int server_fd) {
   if (worker_state_init(&state, connfd, server_fd) != 0) {
     goto cleanup;
   }
-  /* TODO any additional worker initialization */
 
   /* handle for incoming requests */
   while (!state.eof) {
@@ -381,7 +378,6 @@ __attribute__((noreturn)) void worker_start(int connfd, int server_fd) {
 
 cleanup:
   /* cleanup worker */
-  /* TODO any additional worker cleanup */
   worker_state_free(&state);
   printf("Cleanup %d\n", state.eof);
   exit(success ? 0 : 1);
