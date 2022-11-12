@@ -87,8 +87,10 @@ timestamp_t db_get_last_viewed(struct db_state* state, int uid){
     return retvalue;
 }
 
-void db_update_last_viewed(struct db_state* state, int uid){
-    char* query = sqlite3_mprintf("UPDATE users SET lastviewed=(strftime('%s', 'now')) WHERE id=%d;", "%s", uid);
+void db_update_last_viewed(struct db_state* state, int uid, timestamp_t timsetamp){
+    char* query = sqlite3_mprintf("UPDATE users SET lastviewed=%ld WHERE id=%d;", timsetamp, uid);
+
+    printf("%ld\n", timsetamp);
 
     sql_exec(state->db, query, NULL, NULL);
 
@@ -97,8 +99,6 @@ void db_update_last_viewed(struct db_state* state, int uid){
 
 int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*)){
     timestamp_t lastViewed = db_get_last_viewed(state, uid);
-
-    db_update_last_viewed(state, uid); // Do this ASAP to avoid messages that come in between to be unread
 
     if(lastViewed < 0) return lastViewed;
 
@@ -113,7 +113,8 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
 
     int res = sqlite3_step(statement);;
-
+    timestamp_t timestamp = lastViewed; // Keep track of last timestamp read so if a new message comes in while the function is running it is still displayed
+    
     while(res == SQLITE_ROW){
         // Create api_msg to represent the row
         struct api_msg row;
@@ -123,7 +124,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
         const char* recipient = (const char*)sqlite3_column_text(statement, 1);
 
         const char* msg = (const char*)sqlite3_column_text(statement, 2);
-        timestamp_t timestamp = sqlite3_column_int64(statement, 3);
+        timestamp = sqlite3_column_int64(statement, 3);
 
         // The offsets should be the same so priv_msg and pub_msg should be equivalent
         row.priv_msg.timestamp = timestamp;
@@ -150,6 +151,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
 
         res = sqlite3_step(statement);
     }
+    db_update_last_viewed(state, uid, timestamp);
 
     sqlite3_finalize(statement);
     sqlite3_free(query);
