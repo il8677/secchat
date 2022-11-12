@@ -162,7 +162,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
 /// @return the ID of the name, or ERR_NAME_INVALID if it doesn't exist
 int nametoid(struct db_state* state, const char* name){
     int retvalue = ERR_NO_USER; // User id invalid by default
-    char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=\"%s\";", name);
+    char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=%Q;", name);
     sqlite3_stmt* statement;
 
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
@@ -185,7 +185,7 @@ int nametoid(struct db_state* state, const char* name){
 int verify_login(struct db_state* state, const char* username, const char* password){
     int retvalue = ERR_INCORRECT_LOGIN;
 
-    char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=\"%s\" AND password=\"%s\";", username, password);
+    char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=%Q AND password=%Q;", username, password);
     sqlite3_stmt* statement;
 
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
@@ -211,10 +211,10 @@ int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
         // If error
         if(id < 0) return id;
         // TODO: https://stackoverflow.com/questions/10522126/sqlite3-mprintf-should-i-always-use-q-as-format-specifier-instead-of-s
-        query = sqlite3_mprintf("INSERT INTO messages (sender, recipient, msg) VALUES (%i, %i, \"%s\");", uid, id, msg->priv_msg.msg);
+        query = sqlite3_mprintf("INSERT INTO messages (sender, recipient, msg) VALUES (%i, %i, %Q);", uid, id, msg->priv_msg.msg);
 
     }else if(msg->type == PUB_MSG){
-        query = sqlite3_mprintf("INSERT INTO messages (sender, msg) VALUES (%i, \"%s\");", uid, msg->pub_msg.msg);
+        query = sqlite3_mprintf("INSERT INTO messages (sender, msg) VALUES (%i, %Q);", uid, msg->pub_msg.msg);
     }else{
         return ERR_INVALID_API_MSG;
     }
@@ -246,7 +246,7 @@ int db_state_init(struct db_state* state){
 int db_register(struct db_state* state, const struct api_msg* msg){
     if(msg->type != REG) return ERR_INVALID_API_MSG;
 
-    char* query = sqlite3_mprintf("INSERT INTO users (username, password) VALUES(\"%s\", \"%s\");", msg->reg.username, msg->reg.password);
+    char* query = sqlite3_mprintf("INSERT INTO users (username, password) VALUES(%Q, %Q);", msg->reg.username, msg->reg.password);
 
     int res = sql_exec(state->db, query, NULL, NULL);
 
