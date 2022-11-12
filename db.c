@@ -43,6 +43,7 @@ void db_create(struct db_state* state){
     sqlite3_extended_result_codes(state->db, 1);
 
     sql_exec(state->db, "PRAGMA foreign_keys = ON;", NULL, NULL);
+    sql_exec(state->db, "PRAGMA journal_mode = WAL;", NULL, NULL);
 
     // Create user DB
     sql_exec(state->db, 

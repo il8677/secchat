@@ -8,6 +8,8 @@ server
 client
 
 *.db
+*.db-shm
+*.db-wal
 *.sql
 
 main.c
