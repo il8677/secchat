@@ -285,6 +285,7 @@ int main(int argc, char **argv) {
   uint16_t port;
   struct client_state state;
 
+  setvbuf(stdout, NULL, _IONBF, 0);
   /* check arguments */
   if (argc != 3) usage();
   if (parse_port(argv[2], &port) != 0) usage();
