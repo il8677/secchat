@@ -135,7 +135,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
         
         
         strncpy(row.priv_msg.from, sender, MAX_USER_LEN);
-        row.priv_msg.msg[MAX_USER_LEN-1] = '\0';
+        row.priv_msg.from[MAX_USER_LEN-1] = '\0';
 
         row.type = PUB_MSG;
 
