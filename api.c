@@ -60,8 +60,6 @@ int api_send(struct api_state* state, struct api_msg* msg){
 void api_state_free(struct api_state* state) {
 
   assert(state);
-
-  /* TODO clean up API state */
 }
 
 /**
@@ -79,5 +77,4 @@ void api_state_init(struct api_state* state, int fd) {
   /* store connection socket */
   state->fd = fd;
 
-  /* TODO initialize API state */
 }

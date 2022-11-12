@@ -5,7 +5,6 @@
 #include "api.h"
 
 struct ui_state {
-  /* TODO add fields to store the command arguments */
 };
 
 void ui_state_free(struct ui_state* state);

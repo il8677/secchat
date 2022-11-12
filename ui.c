@@ -14,10 +14,7 @@
  * @param state   Initialized UI state to be cleaned up
  */
 void ui_state_free(struct ui_state* state) {
-
   assert(state);
-
-  /* TODO free ui_state */
 }
 
 /**
@@ -25,10 +22,7 @@ void ui_state_free(struct ui_state* state) {
  * @param state   UI state to be initialized
  */
 void ui_state_init(struct ui_state* state) {
-
   assert(state);
-
-  /* TODO initialize ui_state */
 }
 
 /**

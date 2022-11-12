@@ -17,7 +17,6 @@ struct client_state {
   struct api_state api;
   int eof;
   struct ui_state ui;
-  /* TODO client state variables go here */
 };
 
 /**
@@ -181,7 +180,6 @@ static int execute_request(
       printf("Some error happened");
       break;
     }
-  /* TODO handle request and reply to client */
 
   return 0;
 }
@@ -229,10 +227,6 @@ static int handle_incoming(struct client_state* state) {
 
   assert(state);
 
-  /* TODO if we have work queued up, this might be a good time to do it */
-
-  /* TODO ask user for input if needed */
-
   /* list file descriptors to wait for */
   FD_ZERO(&readfds);
   FD_SET(STDIN_FILENO, &readfds);
@@ -267,14 +261,11 @@ static int client_state_init(struct client_state* state) {
   /* initialize UI */
   ui_state_init(&state->ui);
 
-  /* TODO any additional client state initialization */
 
   return 0;
 }
 
 static void client_state_free(struct client_state* state) {
-
-  /* TODO any additional client state cleanup */
 
   /* cleanup API state */
   api_state_free(&state->api);
@@ -308,13 +299,9 @@ int main(int argc, char **argv) {
   /* initialize API */
   api_state_init(&state.api, fd);
 
-  /* TODO any additional client initialization */
-
   /* client things */
   while (!state.eof && handle_incoming(&state) == 0);
 
-  /* clean up */
-  /* TODO any additional client cleanup */
   client_state_free(&state);
   close(fd);
 
