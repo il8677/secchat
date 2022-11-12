@@ -171,8 +171,6 @@ static int execute_request(struct worker_state* state,
        db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); // TODO: Login function
 
       } 
-        
-
       break;
     
     case REG: 
@@ -234,10 +232,9 @@ static int handle_client_request(struct worker_state* state) {
 
   // Send error packet
   if (errcode < 0) {
-    struct api_msg responseData;
-    responseData.type = ERR;
-    responseData.err.errcode = errcode;
-    api_send(&state->api, &responseData);
+    msg.type = ERR;
+    msg.err.errcode = errcode;
+    api_send(&state->api, &msg);
   } 
   /* clean up state associated with the message */
   api_recv_free(&msg);
