@@ -233,7 +233,7 @@ static int handle_client_request(struct worker_state* state) {
   // Send error packet
   if (errcode < 0) {
     msg.type = ERR;
-    msg.err.errcode = errcode;
+    msg.errcode = errcode;
     api_send(&state->api, &msg);
   } 
   /* clean up state associated with the message */

@@ -20,11 +20,9 @@ struct api_msg {
 
   enum msg_type_t type;
 
+  char errcode;
+  
   union {
-    struct {
-      char errcode;
-    } err;
-
     struct {
       char statusmsg[MAX_MSG_LEN];
     } status;

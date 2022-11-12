@@ -105,7 +105,7 @@ static int client_process_command(struct client_state* state) {
   
 
 static void error(const struct api_msg *msg){
-  switch (msg->err.errcode)
+  switch (msg->errcode)
   {
   case ERR_SQL:
     printf("Internal sql error, please try again.\n");
