@@ -22,7 +22,7 @@ struct api_msg {
 
   union {
     struct {
-      int errcode;
+      char errcode;
     } err;
 
     struct {
