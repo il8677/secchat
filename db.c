@@ -29,7 +29,7 @@ int sql_exec(sqlite3* db, const char* x, int (*callback)(void*,int,char**,char**
     while(res == SQLITE_BUSY) res = sqlite3_exec(db, x, callback, userdata, &errmsg);
 
     if(res != SQLITE_OK){
-        fprintf(stderr, "Error running %s\n\t%s\n", x, errmsg);
+        fprintf(stdin, "Error running %s\n\t%s\n", x, errmsg);
         sqlite3_free(errmsg);
     }
 

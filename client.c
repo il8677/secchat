@@ -123,7 +123,7 @@ static void error(const struct api_msg *msg){
     printf("Internal server error, please try again\n");  
     break;
   case ERR_USERNAME_EXISTS:
-    printf("user %s already exists.\n", msg->login.username);
+    printf("error: user %s already exists\n", msg->login.username);
     break;
   case ERR_INCORRECT_LOGIN:
     printf("invalid credentials\n");
