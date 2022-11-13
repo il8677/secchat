@@ -55,9 +55,12 @@ static int client_connect(struct client_state* state,
 
 static int client_process_command(struct client_state* state) {
 
-  assert(state);
+  assert(state);  
 
   char *input = read_input(16);
+
+  if(input == NULL) return -1; // STDIN Closed
+
   struct api_msg apimsg;
   int errcode = 0;
 
