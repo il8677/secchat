@@ -128,7 +128,7 @@ static void error(const struct api_msg *msg){
     printf("user is not currently logged in\n");
     break;      
   default:
-    printf("unknown error, please try again.");
+    printf("unknown error, please try again.\n");
     break;
   }
 }
@@ -144,8 +144,8 @@ static void privMsg(const struct api_msg * msg){
 static void pubMsg(const struct api_msg * msg){
   char *ctime_no_newline = strtok(ctime(&msg->pub_msg.timestamp), "\n");
 
-  printf("%s %.*s: %.*s\n", ctime_no_newline, MAX_USER_LEN,
-  msg->pub_msg.from, MAX_MSG_LEN, msg->pub_msg.msg);
+  printf("%s %s: %s\n", ctime_no_newline,
+  msg->pub_msg.from, msg->pub_msg.msg);
 }
 static void who(const struct api_msg * msg){
   printf("users: %s\n", msg->who.users);
@@ -285,7 +285,6 @@ int main(int argc, char **argv) {
   uint16_t port;
   struct client_state state;
 
-  setvbuf(stdout, NULL, _IONBF, 0);
   /* check arguments */
   if (argc != 3) usage();
   if (parse_port(argv[2], &port) != 0) usage();
