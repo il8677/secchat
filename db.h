@@ -27,7 +27,7 @@ void db_state_free(struct db_state* state);
 /// @param uid the user id to get messages for
 /// @param cb the callback to send api_msgs to, returns 0 for no error
 /// @return 0 if OK, error code otherwise
-int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*));
+int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*), timestamp_t* lastviewed);
 
 /// @brief Adds a message to the database
 /// @param state db state

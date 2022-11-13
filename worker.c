@@ -22,6 +22,7 @@ struct worker_state {
   int index;
 
   int uid;  // Potential attack surface
+  timestamp_t lastviewed;
 
   struct db_state dbConn;
 };
@@ -37,7 +38,7 @@ static int msg_query_cb(struct api_state* state, struct api_msg* msg){
  *        the client.
  */
 static int handle_s2w_notification(struct worker_state* state) {
-  db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb);
+  db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb, &state->lastviewed);
 
   return 0;
 };
@@ -144,9 +145,11 @@ static void setUser(struct worker_state* state, int uid, const char* username){
 
     // Copy to shared memory
     strcpy(state->names+MAX_USER_LEN*state->index, username);
+    // Reset lastviewed
+    state->lastviewed = 0;
 
     // Give user unread messages
-    db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); 
+    db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb, &state->lastviewed); 
 }
 
 /**

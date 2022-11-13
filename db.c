@@ -50,8 +50,7 @@ void db_create(struct db_state* state){
     "CREATE TABLE IF NOT EXISTS users ( \
         id INTEGER PRIMARY KEY AUTOINCREMENT, \
         username VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL UNIQUE, \
-        password VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL, \
-        lastviewed INTEGER DEFAULT 0 NOT NULL);", 
+        password VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL);", 
     NULL, NULL);
 
     // Create message db
@@ -67,53 +66,19 @@ void db_create(struct db_state* state){
     NULL, NULL);
 }
 
-timestamp_t db_get_last_viewed(struct db_state* state, int uid){
-    timestamp_t retvalue = ERR_NO_USER; // User id invalid by default
-
-    char* query = sqlite3_mprintf("SELECT lastviewed FROM users WHERE id=%d;", uid);
-
-    sqlite3_stmt* statement;
-
-    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
-
-    // If there was a result, the timestamp was found
-    if(sqlite3_step(statement) == SQLITE_ROW)
-        retvalue = sqlite3_column_int64(statement, 0);
-    
-
-    sqlite3_finalize(statement);
-    sqlite3_free(query);
-
-    return retvalue;
-}
-
-void db_update_last_viewed(struct db_state* state, int uid, timestamp_t timsetamp){
-    char* query = sqlite3_mprintf("UPDATE users SET lastviewed=%ld WHERE id=%d;", timsetamp, uid);
-
-    printf("%ld\n", timsetamp);
-
-    sql_exec(state->db, query, NULL, NULL);
-
-    sqlite3_free(query);
-}
-
-int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*)){
-    timestamp_t lastViewed = db_get_last_viewed(state, uid);
-
-    if(lastViewed < 0) return lastViewed;
-
+int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*), timestamp_t* lastviewed){
     char* query = sqlite3_mprintf("SELECT su.username, ru.username, msg, timestamp \
                             FROM messages INNER JOIN users AS su ON su.id == sender \
                             LEFT JOIN users AS ru ON ru.id == recipient \
-                            WHERE timestamp > %d AND (recipient IS NULL OR recipient == %d)", lastViewed, uid);
+                            WHERE timestamp > %d AND (recipient IS NULL OR recipient == %d)", *lastviewed, uid);
 
 
     sqlite3_stmt* statement;
 
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
 
-    int res = sqlite3_step(statement);;
-    timestamp_t timestamp = lastViewed; // Keep track of last timestamp read so if a new message comes in while the function is running it is still displayed
+    int res = sqlite3_step(statement);
+    timestamp_t timestamp = *lastviewed; // Keep track of last timestamp read so if a new message comes in while the function is running it is still displayed
     
     while(res == SQLITE_ROW){
         // Create api_msg to represent the row
@@ -151,7 +116,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
 
         res = sqlite3_step(statement);
     }
-    db_update_last_viewed(state, uid, timestamp);
+    *lastviewed = timestamp;
 
     sqlite3_finalize(statement);
     sqlite3_free(query);
