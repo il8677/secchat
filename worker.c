@@ -185,8 +185,8 @@ static int execute_request(struct worker_state* state,
 
         strcpy(membuffer+next, currentName);
         next += strlen(currentName);
-        // Replace null byte with comma
-        membuffer[next++] = ',';
+        // Replace null byte with new line
+        membuffer[next++] = '\n';
       }
       // Add nullbyte to the end
       if(next) membuffer[next-1] = '\0';
