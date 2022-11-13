@@ -66,6 +66,8 @@ int input_handle_privmsg(struct api_msg* apimsg, char* p) {
 
   if (msg == NULL) return ERR_MESSAGE_INVALID;
   if (message_too_long(msg) == 1) return ERR_MESSAGE_TOOLONG;
+  
+  while (msg < msg+strlen(msg) && isspace(*msg)) msg++;
 
   apimsg->type = PRIV_MSG;
   strcpy(apimsg->priv_msg.to, to);
