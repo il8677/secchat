@@ -193,10 +193,14 @@ static int execute_request(struct worker_state* state,
       break;
     }
     case LOGIN:
+      if(is_logged_in(state)){
+        res = ERR_LOGGED_IN;
+        break;
+      }
+
       res = db_login(&state->dbConn, msg);
 
       if(res >= 0){
-        printf("[execute_request] User %d logged in\n", res);
         responseData.type = STATUS;
         strcpy(responseData.status.statusmsg, "authentication succeeded");
 
@@ -206,10 +210,14 @@ static int execute_request(struct worker_state* state,
       } 
       break;
     case REG: 
+      if(is_logged_in(state)){
+        res = ERR_LOGGED_IN;
+        break;
+      }
+
       res = db_register(&state->dbConn, msg);
 
       if(res >= 0){ 
-
         responseData.type = STATUS;
         strcpy(responseData.status.statusmsg, "registration succeeded");
         

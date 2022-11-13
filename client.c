@@ -131,8 +131,9 @@ static void error(const struct api_msg *msg){
   case ERR_AUTHENTICATION:
     printf("Authentication error, please try again.\n");
     break;
+  case ERR_LOGGED_IN:
   case ERR_NO_USER:
-    printf("error: command is not currently avaliable\n");
+    printf("error: command not currently available\n");
     break;      
   default:
     printf("unknown error %d, please try again.\n", msg->errcode);
