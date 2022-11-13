@@ -151,7 +151,7 @@ static void privMsg(const struct api_msg * msg){
   char buffer[26];
   formatTime(buffer, 26, msg->priv_msg.timestamp);
 
-  printf("%s %.*s, @%.*s %.*s\n", buffer, MAX_USER_LEN,
+  printf("%s %.*s: @%.*s %.*s\n", buffer, MAX_USER_LEN,
   msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, msg->priv_msg.msg);
 }
 
