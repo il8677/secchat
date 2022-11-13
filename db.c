@@ -70,7 +70,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
     char* query = sqlite3_mprintf("SELECT su.username, ru.username, msg, timestamp \
                             FROM messages INNER JOIN users AS su ON su.id == sender \
                             LEFT JOIN users AS ru ON ru.id == recipient \
-                            WHERE timestamp > %d AND (recipient IS NULL OR recipient == %d)", *lastviewed, uid);
+                            WHERE timestamp > %d AND (recipient IS NULL OR recipient == %d OR sender == %d)", *lastviewed, uid, uid);
 
 
     sqlite3_stmt* statement;
