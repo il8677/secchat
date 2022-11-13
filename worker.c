@@ -195,7 +195,7 @@ static int execute_request(struct worker_state* state,
       if(res >= 0){
         printf("[execute_request] User %d logged in\n", res);
         responseData.type = STATUS;
-        strcpy(responseData.status.statusmsg, "Login successful");
+        strcpy(responseData.status.statusmsg, "authentication succeeded");
 
         doResponse = 1;
 
@@ -208,7 +208,7 @@ static int execute_request(struct worker_state* state,
       if(res >= 0){ 
 
         responseData.type = STATUS;
-        strcpy(responseData.status.statusmsg, "Registration successful");
+        strcpy(responseData.status.statusmsg, "registration succeeded");
         
         doResponse = 1;
 

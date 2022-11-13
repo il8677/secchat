@@ -84,23 +84,24 @@ static int client_process_command(struct client_state* state) {
   }
   else errcode = input_handle_pubmsg(&apimsg, p);
   
+  free(input);
   if (errcode != 0) {
+    printf("error: invalid command format\n\t");
+
     switch (errcode) {
-    case ERR_COMMAND_ERROR:    printf("--Command not recognised.\n"); break;
-    case ERR_NAME_INVALID:     printf("--Given name is invalid.\n"); break;
-    case ERR_MESSAGE_INVALID:  printf("--Given message is invalid\n"); break;
-    case ERR_MESSAGE_TOOLONG:  printf("--Given message is too long, max number of characters: %d.\n", MAX_MSG_LEN); break;
-    case ERR_PASSWORD_INVALID: printf("--Given password is invalid.\n"); break;
-    case ERR_USERNAME_TOOLONG: printf("--Given username is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
-    case ERR_PASSWORD_TOOLONG: printf("--Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
-    case ERR_INVALID_NR_ARGS:  printf("--Invalid number of arguments given.\n"); break;
-  }
-    free(input);
+      case ERR_COMMAND_ERROR:    printf("Command not recognised.\n"); break;
+      case ERR_NAME_INVALID:     printf("Given name is invalid.\n"); break;
+      case ERR_MESSAGE_INVALID:  printf("Given message is invalid\n"); break;
+      case ERR_MESSAGE_TOOLONG:  printf("Given message is too long, max number of characters: %d.\n", MAX_MSG_LEN); break;
+      case ERR_PASSWORD_INVALID: printf("Given password is invalid.\n"); break;
+      case ERR_USERNAME_TOOLONG: printf("Given username is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+      case ERR_PASSWORD_TOOLONG: printf("Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
+      case ERR_INVALID_NR_ARGS:  printf("Invalid number of arguments given.\n"); break;
+    }
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying
   } else {
     
     api_send(&(state->api), &apimsg); //Commented for testing purposes
-    free(input);
     return 0;
   }
 }
@@ -138,16 +139,27 @@ static void error(const struct api_msg *msg){
 static void status(const struct api_msg * msg){
   printf("%.*s\n",MAX_MSG_LEN, msg->status.statusmsg);
 }
-static void privMsg(const struct api_msg * msg){
-  char *ctime_no_newline = strtok(ctime(&msg->priv_msg.timestamp), "\n");
 
-  printf("%s %.*s, @%.*s \n %.*s\n", ctime_no_newline, MAX_USER_LEN,
+static void formatTime(char* buffer, int size, timestamp_t timestamp){
+  struct tm* tm_info;
+  tm_info = localtime(&timestamp);
+
+  strftime(buffer, size, "%Y-%m-%d %H:%M:%S", tm_info);
+}
+
+static void privMsg(const struct api_msg * msg){
+  char buffer[26];
+  formatTime(buffer, 26, msg->priv_msg.timestamp);
+
+  printf("%s %.*s, @%.*s %.*s\n", buffer, MAX_USER_LEN,
   msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, msg->priv_msg.msg);
 }
-static void pubMsg(const struct api_msg * msg){
-  char *ctime_no_newline = strtok(ctime(&msg->pub_msg.timestamp), "\n");
 
-  printf("%s %s: %s\n", ctime_no_newline,
+static void pubMsg(const struct api_msg * msg){
+  char buffer[26];
+  formatTime(buffer, 26, msg->priv_msg.timestamp);
+
+  printf("%s %s: %s\n", buffer,
   msg->pub_msg.from, msg->pub_msg.msg);
 }
 static void who(const struct api_msg * msg){
