@@ -135,6 +135,9 @@ static void error(const struct api_msg *msg){
   case ERR_NO_USER:
     printf("error: command not currently available\n");
     break;      
+  case ERR_RECIPIENT_INVALID:
+    printf("error: user not found\n");
+    break;
   default:
     printf("unknown error %d, please try again.\n", msg->errcode);
     break;

@@ -8,7 +8,8 @@
 #define ERR_INCORRECT_LOGIN -5 // Username/password wrong
 #define ERR_AUTHENTICATION -6 // Message could not be authenticated
 #define ERR_NO_USER -7 //Not logged in
-#define ERR_LOGGED_IN -8
+#define ERR_LOGGED_IN -8 // Is logged in
+#define ERR_RECIPIENT_INVALID -9 // DM Target invalid
 
 #define ERR_COMMAND_ERROR -11 //Command is not recognised
 #define ERR_MESSAGE_INVALID -12 //Messsage given by client is invalid

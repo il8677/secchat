@@ -177,7 +177,9 @@ int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
         int id = nametoid(state, msg->priv_msg.to);
 
         // If error
+        if(id == ERR_NO_USER) return ERR_RECIPIENT_INVALID;
         if(id < 0) return id;
+        
         query = sqlite3_mprintf("INSERT INTO messages (sender, recipient, msg) VALUES (%i, %i, %Q);", uid, id, msg->priv_msg.msg);
 
     }else if(msg->type == PUB_MSG){

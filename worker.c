@@ -168,8 +168,10 @@ static int execute_request(struct worker_state* state,
   switch (msg->type) {
     case PRIV_MSG:
     case PUB_MSG:
-      db_add_message(&state->dbConn, msg, state->uid);
-      notify_workers(state);
+      res = db_add_message(&state->dbConn, msg, state->uid);
+
+      if(res >= 0)
+        notify_workers(state);
       break;
     case WHO:
     {
