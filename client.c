@@ -126,7 +126,7 @@ static void error(const struct api_msg *msg){
     printf("error: user %s already exists\n", msg->login.username);
     break;
   case ERR_INCORRECT_LOGIN:
-    printf("invalid credentials\n");
+    printf("error: invalid credentials\n");
     break;
   case ERR_AUTHENTICATION:
     printf("Authentication error, please try again.\n");
