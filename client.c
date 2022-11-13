@@ -84,12 +84,16 @@ static int client_process_command(struct client_state* state) {
   }
   else errcode = input_handle_pubmsg(&apimsg, p);
   
+  if (errcode == ERR_COMMAND_ERROR){
+    printf("error: unknown command %s\n", input);
+    free(input);
+    return 0;
+  }
+  
   free(input);
   if (errcode != 0) {
     printf("error: invalid command format\n\t");
-
     switch (errcode) {
-      case ERR_COMMAND_ERROR:    printf("Command not recognised.\n"); break;
       case ERR_NAME_INVALID:     printf("Given name is invalid.\n"); break;
       case ERR_MESSAGE_INVALID:  printf("Given message is invalid\n"); break;
       case ERR_MESSAGE_TOOLONG:  printf("Given message is too long, max number of characters: %d.\n", MAX_MSG_LEN); break;
@@ -99,11 +103,10 @@ static int client_process_command(struct client_state* state) {
       case ERR_INVALID_NR_ARGS:  printf("Invalid number of arguments given.\n"); break;
     }
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying
-  } else {
-    
-    api_send(&(state->api), &apimsg); //Commented for testing purposes
-    return 0;
   }
+
+  api_send(&(state->api), &apimsg);
+  return 0;
 }
   
 
@@ -129,7 +132,7 @@ static void error(const struct api_msg *msg){
     printf("Authentication error, please try again.\n");
     break;
   case ERR_NO_USER:
-    printf("user is not currently logged in\n");
+    printf("error: command is not currently avaliable\n");
     break;      
   default:
     printf("unknown error %d, please try again.\n", msg->errcode);
