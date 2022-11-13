@@ -13,3 +13,6 @@ client
 *.sql
 
 main.c
+
+test-tmp
+__pycache__

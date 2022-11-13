@@ -6,7 +6,7 @@ LDLIBS=-lsqlite3 -lcrypto -lssl
 all: client server
 
 clean:
-	rm -f server client *.o chat.db 
+	rm -f server client *.o *.db*
 
 ui.o: ui.c ui.h
 
