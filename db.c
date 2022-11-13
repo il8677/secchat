@@ -141,7 +141,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
 
         if(recipient != NULL){
             strncpy(row.priv_msg.to, recipient, MAX_USER_LEN);
-            row.priv_msg.msg[MAX_USER_LEN-1] = '\0';
+            row.priv_msg.to[MAX_USER_LEN-1] = '\0';
 
             row.type=PRIV_MSG;
         }
