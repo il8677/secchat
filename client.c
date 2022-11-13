@@ -128,7 +128,7 @@ static void error(const struct api_msg *msg){
     printf("user is not currently logged in\n");
     break;      
   default:
-    printf("unknown error, please try again.\n");
+    printf("unknown error %d, please try again.\n", msg->errcode);
     break;
   }
 }
