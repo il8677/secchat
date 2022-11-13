@@ -18,6 +18,9 @@ struct worker_state {
   int server_fd; /* server <-> worker bidirectional notification channel */
   int server_eof;
 
+  char* names; // Shared mem with server
+  int index;
+
   int uid;  // Potential attack surface
 
   struct db_state dbConn;
@@ -136,6 +139,16 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
   return 1;
 }
 
+static void setUser(struct worker_state* state, int uid, const char* username){
+    state->uid = uid;
+
+    // Copy to shared memory
+    strcpy(state->names+MAX_USER_LEN*state->index, username);
+
+    // Give user unread messages
+    db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); 
+}
+
 /**
  * @brief         Handles a message coming from client
  * @param state   Initialized worker state
@@ -156,37 +169,52 @@ static int execute_request(struct worker_state* state,
       notify_workers(state);
       break;
     case WHO:
-      // TODO: Who command
+    {
+      char* membuffer = responseData.who.users;
+      int next = 0;
+
+      for(int i = 0; i < MAX_CONNECTIONS*MAX_USER_LEN; i += MAX_USER_LEN){
+        char* currentName = state->names + i;
+        
+        if(currentName[0] == '\0') continue;
+
+        strcpy(membuffer+next, currentName);
+        next += strlen(currentName);
+        // Replace null byte with comma
+        membuffer[next++] = ',';
+      }
+      // Add nullbyte to the end
+      if(next) membuffer[next-1] = '\0';
+
+      doResponse = 1;
       break;
+    }
     case LOGIN:
       res = db_login(&state->dbConn, msg);
 
       if(res >= 0){
         printf("[execute_request] User %d logged in\n", res);
-        state->uid = res;
         responseData.type = STATUS;
         strcpy(responseData.status.statusmsg, "Login successful");
 
         doResponse = 1;
-       db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); // TODO: Login function
 
+        setUser(state, res, msg->login.username);
       } 
       break;
-    
     case REG: 
       res = db_register(&state->dbConn, msg);
 
       if(res >= 0){ 
-        state->uid = res;
 
         responseData.type = STATUS;
         strcpy(responseData.status.statusmsg, "Registration successful");
         
         doResponse = 1;
-       db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb); // TODO: Login function
-      }
-    break; 
 
+        setUser(state, res, msg->reg.username);
+      }
+      break; 
     case EXIT:
       state->uid = -1;
       state->eof = 1;
@@ -316,10 +344,10 @@ static int handle_incoming(struct worker_state* state) {
  * @param connfd       connection file descriptor
  * @param pipefd_w2s   pipe to notify server (write something to notify)
  * @param pipefd_s2w   pipe to be notified by server (can read when notified)
- *
+ * @param name         pointer to shared memory for name
  */
 static int worker_state_init(struct worker_state* state, int connfd,
-                             int server_fd) {
+                             int server_fd, char* name, int index) {
   /* initialize */
   memset(state, 0, sizeof(*state));
   state->server_fd = server_fd;
@@ -330,6 +358,9 @@ static int worker_state_init(struct worker_state* state, int connfd,
   state->uid = -1;
 
   db_state_init(&(state->dbConn));
+
+  state->names = name;
+  state->index = index;
 
   return 0;
 }
@@ -359,12 +390,12 @@ static void worker_state_free(struct worker_state* state) {
  * @param pipefd_s2w   File descriptor for pipe to send notifications
  *                     from server to worker
  */
-__attribute__((noreturn)) void worker_start(int connfd, int server_fd) {
+__attribute__((noreturn)) void worker_start(int connfd, int server_fd, char* sharedmem, int index) {
   struct worker_state state;
   int success = 1;
 
   /* initialize worker state */
-  if (worker_state_init(&state, connfd, server_fd) != 0) {
+  if (worker_state_init(&state, connfd, server_fd, sharedmem, index) != 0) {
     goto cleanup;
   }
 

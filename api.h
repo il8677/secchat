@@ -3,12 +3,14 @@
 
 #include <stdint.h>
 
-#define MAX_USER_LEN 16
+#define MAX_USER_LEN 10
 #define MAX_MSG_LEN 160
 
 // Because preprocessors cannot do athrithmetic 
-#define MAX_USER_LEN_M1 15
+#define MAX_USER_LEN_M1 9
 #define MAX_MSG_LEN_M1 159
+
+#define MAX_CONNECTIONS 16
 
 enum msg_type_t { ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, EXIT };
 

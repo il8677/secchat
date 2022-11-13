@@ -10,11 +10,12 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/mman.h>
 
 #include "util.h"
 #include "worker.h"
 
-#define MAX_CHILDREN 16
+#include "api.h"
 
 struct server_child_state {
   int worker_fd;  /* server <-> worker bidirectional notification channel */
@@ -23,7 +24,8 @@ struct server_child_state {
 
 struct server_state {
   int sockfd;
-  struct server_child_state children[MAX_CHILDREN];
+  struct server_child_state children[MAX_CONNECTIONS];
+  char* sharedmem;
   int child_count;
 };
 
@@ -63,19 +65,19 @@ error:
 /// @brief Slots the child into a free place
 /// @param state the server state
 /// @param worker_fd the file descriptor of the shared channel
-static void child_add(struct server_state* state, int worker_fd) {
+static int child_add(struct server_state* state, int worker_fd) {
   int i;
 
   assert(state);
   assert(worker_fd >= 0);
 
   /* store worker_fd */
-  for (i = 0; i < MAX_CHILDREN; i++) {
+  for (i = 0; i < MAX_CONNECTIONS; i++) {
     if (state->children[i].worker_fd < 0) {
       state->children[i].worker_fd = worker_fd;
       state->children[i].pending = 0;
       state->child_count++;
-      return;
+      return i;
     }
   }
 
@@ -122,7 +124,7 @@ static void close_server_handles(struct server_state* state) {
 
   /* close all open file descriptors */
   close(state->sockfd);
-  for (i = 0; i < MAX_CHILDREN; i++) {
+  for (i = 0; i < MAX_CONNECTIONS; i++) {
     if (state->children[i].worker_fd >= 0) {
       close(state->children[i].worker_fd);
     }
@@ -150,7 +152,7 @@ static int handle_connection(struct server_state* state) {
   }
 
   /* can we support more children? */
-  if (state->child_count >= MAX_CHILDREN) {
+  if (state->child_count >= MAX_CONNECTIONS) {
     fprintf(stderr,
       "error: max children exceeded, dropping incoming connection\n");
     return 0;
@@ -162,13 +164,14 @@ static int handle_connection(struct server_state* state) {
     return -1;
   }
 
+  int index = child_add(state, sockets[0]);
   /* fork process to handle it */
   pid = fork();
   if (pid == 0) {
     /* worker process */
     close(sockets[0]);
     close_server_handles(state);
-    worker_start(connfd, sockets[1]);
+    worker_start(connfd, sockets[1], state->sharedmem, index);
     /* never reached */
     exit(1);
   }
@@ -181,7 +184,6 @@ static int handle_connection(struct server_state* state) {
   }
 
   /* register child */
-  child_add(state, sockets[0]);
 
   /* close worker handles in server process */
   close(connfd);
@@ -198,6 +200,8 @@ static int handle_s2w_closed(struct server_state* state, int index) {
   close(state->children[index].worker_fd);
   state->children[index].worker_fd = -1;
   state->child_count--;
+
+  memset(state->sharedmem + (MAX_USER_LEN * index), '\0', MAX_USER_LEN);
   return 0;
 }
 
@@ -228,7 +232,7 @@ static int handle_w2s_read(struct server_state* state, int index) {
   }
 
   /* notify each worker */
-  for (i = 0; i < MAX_CHILDREN; i++) {
+  for (i = 0; i < MAX_CONNECTIONS; i++) {
     state->children[i].pending = 1;
   }
 
@@ -292,9 +296,13 @@ static int server_state_init(struct server_state* state) {
   /* clear state, invalidate file descriptors */
   memset(state, 0, sizeof(*state));
   state->sockfd = -1;
-  for (i = 0; i < MAX_CHILDREN; i++) {
+  for (i = 0; i < MAX_CONNECTIONS; i++) {
     state->children[i].worker_fd = -1;
   }
+
+  state->sharedmem = mmap(NULL, MAX_USER_LEN, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  memset(state->sharedmem, '\0', MAX_USER_LEN*MAX_CONNECTIONS);
+
 
   return 0;
 }
@@ -302,7 +310,9 @@ static int server_state_init(struct server_state* state) {
 static void server_state_free(struct server_state* state) {
   int i;
 
-  for (i = 0; i < MAX_CHILDREN; i++) {
+  munmap(state->sharedmem, MAX_USER_LEN*MAX_CONNECTIONS);
+
+  for (i = 0; i < MAX_CONNECTIONS; i++) {
     close(state->children[i].worker_fd);
   }
 }
@@ -320,7 +330,7 @@ static int handle_incoming(struct server_state* state) {
   /* wake on for incoming connections */
   FD_SET(state->sockfd, &readfds);
   fdmax = state->sockfd;
-  for (i = 0; i < MAX_CHILDREN; i++) {
+  for (i = 0; i < MAX_CONNECTIONS; i++) {
     worker_fd = state->children[i].worker_fd;
     if (worker_fd < 0) continue;
     /* wake on worker-to-server notifications */
@@ -345,7 +355,7 @@ static int handle_incoming(struct server_state* state) {
     if (handle_connection(state) != 0) success = 0;
   }
 
-  for (i = 0; i < MAX_CHILDREN; i++) {
+  for (i = 0; i < MAX_CONNECTIONS; i++) {
   	/* handle incoming notifications */
     worker_fd = state->children[i].worker_fd;
     if (worker_fd < 0) continue;
