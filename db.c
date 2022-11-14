@@ -67,10 +67,10 @@ void db_create(struct db_state* state){
 }
 
 int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*), timestamp_t* lastviewed){
-    char* query = sqlite3_mprintf("SELECT su.username, ru.username, msg, timestamp \
+    char* query = sqlite3_mprintf("SELECT messages.id, su.username, ru.username, msg, timestamp \
                             FROM messages INNER JOIN users AS su ON su.id == sender \
                             LEFT JOIN users AS ru ON ru.id == recipient \
-                            WHERE timestamp > %d AND (recipient IS NULL OR recipient == %d OR sender == %d)", *lastviewed, uid, uid);
+                            WHERE messages.id > %d AND (recipient IS NULL OR recipient == %d OR sender == %d)", *lastviewed, uid, uid);
 
 
     sqlite3_stmt* statement;
@@ -78,18 +78,19 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
 
     int res = sqlite3_step(statement);
-    timestamp_t timestamp = *lastviewed; // Keep track of last timestamp read so if a new message comes in while the function is running it is still displayed
+    timestamp_t timestamp; // Keep track of last id read so if a new message comes in while the function is running it is still displayed
     
     while(res == SQLITE_ROW){
         // Create api_msg to represent the row
         struct api_msg row;
-
+        *lastviewed = sqlite3_column_int64(statement, 0);
+        
         // These do NOT have to be freed (they are freed by finalize)
-        const char* sender = (const char*)sqlite3_column_text(statement, 0);
-        const char* recipient = (const char*)sqlite3_column_text(statement, 1);
+        const char* sender = (const char*)sqlite3_column_text(statement, 1);
+        const char* recipient = (const char*)sqlite3_column_text(statement, 2);
 
-        const char* msg = (const char*)sqlite3_column_text(statement, 2);
-        timestamp = sqlite3_column_int64(statement, 3);
+        const char* msg = (const char*)sqlite3_column_text(statement, 3);
+        timestamp = sqlite3_column_int64(statement, 4);
 
         // The offsets should be the same so priv_msg and pub_msg should be equivalent
         row.priv_msg.timestamp = timestamp;
@@ -116,7 +117,6 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
 
         res = sqlite3_step(statement);
     }
-    *lastviewed = timestamp;
 
     sqlite3_finalize(statement);
     sqlite3_free(query);
