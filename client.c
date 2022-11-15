@@ -157,8 +157,9 @@ static void formatTime(char* buffer, int size, timestamp_t timestamp){
 static void privMsg(const struct api_msg * msg){
   char buffer[26];
   formatTime(buffer, 26, msg->priv_msg.timestamp);
-
-  printf("%s %.*s: @%.*s %.*s\n", buffer, MAX_USER_LEN,
+  
+  //never print more than the respective maximum lengths.
+  printf("%s %.*s: @%.*s %.*s\n", buffer, MAX_USER_LEN, 
   msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, msg->priv_msg.msg);
 }
 
@@ -166,6 +167,7 @@ static void pubMsg(const struct api_msg * msg){
   char buffer[26];
   formatTime(buffer, 26, msg->priv_msg.timestamp);
 
+  //never print more than the respective maximum lengths.
   printf("%s %s: %s\n", buffer,
   msg->pub_msg.from, msg->pub_msg.msg);
 }
