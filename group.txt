@@ -1,7 +1,7 @@
 2665319 | rpi330 | Roy Pei | r.pei@student.vu.nl
 2711334 | nkk770 | Niels Kok | n.c.kok@student.vu.nl
-
+2687776 | il8677 | Isaac Lewis | i.lewis@student.vu.nl
 
 Roy worked mostly on the client messaging
 Niels worked mostly on the parsing of messages
-Isaac worked mostly on the serverside, including the worker.c and database.c
+Isaac worked mostly on the serverside, including the worker.c and db.c
