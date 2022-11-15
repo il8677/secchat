@@ -50,4 +50,4 @@ When displaying the messages we make sure to never print more characters than th
 
 # database
 ## message containing sql commands
-The database api makes sure that an sql command in the message wont affect any database. This is handled by the sqlite3 library.
+The database api makes sure that an sql command in the message wont affect any database. This is handled by the sqlite3 library mprintf call with the %Q format specifier, which quotes any input and escapes any internal quotes, ensuring escape impossible.
