@@ -1,12 +1,34 @@
 # walkthrough
 ## parsing input
-The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct. If the message is too long or the command is invalid we give an error and ask them to try again. The structs are then send to the socket.
+The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct within the api_message. If the message is too long or the command is invalid we give an error and ask them to try again. The structs are then sent to the socket.
 
 ## server and worker
-The server then makes makes space for the child and wakes a worker thread (if the limit has not been reached). The worker will then check if the user is logged in and authenticate and verify the request. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command the worker might access the respective databases to write things in them or read things from them. If the database does not exist yet we make one.
+The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify the request. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track with a block of shared memory, which the workers accesses when building the response to a /users command.
 
 ## wrapping up
-The worker then notifies the server which then in turn sends the message back to the client. In "execute_request"(client.c) the client, depending on the message type then displays the correct message.   
+If a message was recieved, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then displays the correct message.   
+
+# messages
+## message types
+Messages contain a union that is composed of a struct for each message type with the appropriate fields for that message. Messages are built in ui.c handler functions, or in worker.c for the serverside.
+### status
+The message has a statusmsg field containing a string sent by the server.
+### error
+The message has an errcode field containing an errorcode sent by the server. This is processed by the client in the function error (client.c) where the appropriate error message is printed. Error codes are defined in errcodes.h 
+### priv_msg
+The message hav a timestamp (unix), a msg field, a from field, and a to field. 
+### pub_msg
+Identical to priv_msg without a to field.
+### who
+The message contains a string with a list of all users. 
+### login / register
+The message contains a username and password (plaintext for now).
+
+### exit
+No fields
+
+## Handling
+Depending on the message recieved, and if it is server or clientside, the message is handled differently. A who message recieved by the server is treated as a request, and a who message is sent back with the string field filled in. The client will then handle it by printing the string. The various handlers in ui.c create messages from user input, called on in the function client_process_command (client.c). The server handles all messages in execute_request (worker.c). The client handles all messages from the server in execute_request (client.c).
 
 # server
 ## layered security
