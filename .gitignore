@@ -16,3 +16,7 @@ main.c
 
 test-tmp
 __pycache__
+
+serverkeys
+clientkeys
+ttpkeys
