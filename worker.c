@@ -144,7 +144,7 @@ static void setUser(struct worker_state* state, int uid, const char* username){
     state->uid = uid;
 
     // Copy to shared memory
-    strcpy(state->names+MAX_USER_LEN*state->index, username);
+    strncpy(state->names+MAX_USER_LEN*state->index, username, MAX_USER_LEN);
     // Reset lastviewed
     state->lastviewed = 0;
 
