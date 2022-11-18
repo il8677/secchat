@@ -11,6 +11,7 @@
 #include "db.h"
 #include "errcodes.h"
 #include "util.h"
+#include "vendor/ssl-nonblock.h"
 
 struct worker_state {
   struct api_state api;
@@ -175,6 +176,7 @@ static int execute_request(struct worker_state* state,
       break;
     case WHO:
     {
+      responseData.type = WHO;
       char* membuffer = responseData.who.users;
       int next = 0;
 
@@ -343,6 +345,7 @@ static int handle_incoming(struct worker_state* state) {
    * here due to buffering (see ssl-nonblock example)
    */
   if (FD_ISSET(state->api.fd, &readfds)) {
+    if(!ssl_has_data(state->api.ssl)) return 0;
     if (handle_client_request(state) != 0) success = 0;
   }
   if (FD_ISSET(state->server_fd, &readfds)) {
@@ -366,7 +369,7 @@ static int worker_state_init(struct worker_state* state, int connfd,
   state->server_fd = server_fd;
 
   /* set up API state */
-  api_state_init(&state->api, connfd);
+  api_state_init(&state->api, connfd, TLS_server_method());
 
   state->uid = -1;
 
@@ -374,6 +377,9 @@ static int worker_state_init(struct worker_state* state, int connfd,
 
   state->names = name;
   state->index = index;
+
+  SSL_use_certificate_file(state->api.ssl, "serverkeys/cert.pem", SSL_FILETYPE_PEM);
+  SSL_use_PrivateKey_file(state->api.ssl, "serverkeys/priv.pem", SSL_FILETYPE_PEM);
 
   return 0;
 }
@@ -388,6 +394,7 @@ static void worker_state_free(struct worker_state* state) {
   api_state_free(&state->api);
 
   db_state_free(&(state->dbConn));
+
 
   /* close file descriptors */
   close(state->server_fd);
@@ -411,6 +418,15 @@ __attribute__((noreturn)) void worker_start(int connfd, int server_fd, char* sha
   if (worker_state_init(&state, connfd, server_fd, sharedmem, index) != 0) {
     goto cleanup;
   }
+
+  int res;
+  // SSL handshake
+  if((res = ssl_block_accept(state.api.ssl, state.api.fd)) != 1){
+    printf("Fatal error %d\n", SSL_get_error(state.api.ssl, res));
+    goto cleanup;
+  }
+  
+  printf("Handshake completed\n");
 
   /* handle for incoming requests */
   while (!state.eof) {

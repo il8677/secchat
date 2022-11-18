@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "api.h"
+#include "vendor/ssl-nonblock.h"
 
 /**
  * @brief         Receive the next message from the sender and stored in @msg
@@ -17,12 +18,12 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
   assert(state);
   assert(msg);
 
-  int res = read(state->fd, msg, sizeof(struct api_msg));
+  int res = ssl_block_read(state->ssl, state->fd, msg, sizeof(struct api_msg));
 
   if(res > 0){
     return 1;
   }else{
-    return 0;
+    return -1;
   }
 
   return -1;
@@ -46,9 +47,9 @@ int api_send(struct api_state* state, struct api_msg* msg){
   assert(state);
   assert(msg);
 
-  int res = write(state->fd, msg, sizeof(struct api_msg));
+  int res = ssl_block_write(state->ssl, state->fd, msg, sizeof(struct api_msg));
 
-  if(res == -1) return -1;
+  if(res <= 1) return -1;
   
   return 1;
 }
@@ -58,7 +59,9 @@ int api_send(struct api_state* state, struct api_msg* msg){
  * @param state   Initialized API state to be cleaned up
  */
 void api_state_free(struct api_state* state) {
-
+  // Clean up SSL
+  SSL_free(state->ssl);
+  SSL_CTX_free(state->ctx);
   assert(state);
 }
 
@@ -67,7 +70,7 @@ void api_state_free(struct api_state* state) {
  * @param state   API state to be initialized
  * @param fd      File descriptor of connection socket
  */
-void api_state_init(struct api_state* state, int fd) {
+void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method) {
 
   assert(state);
 
@@ -76,5 +79,10 @@ void api_state_init(struct api_state* state, int fd) {
 
   /* store connection socket */
   state->fd = fd;
-
+  
+  state->ctx = SSL_CTX_new(method);
+  state->ssl = SSL_new(state->ctx);
+  
+  set_nonblock(fd);  
+  SSL_set_fd(state->ssl,  fd);
 }

@@ -12,6 +12,10 @@
 #include "ui.h"
 #include "util.h"
 #include "errcodes.h"
+#include "vendor/ssl-nonblock.h"
+
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 struct client_state {
   struct api_state api;
@@ -172,7 +176,7 @@ static void pubMsg(const struct api_msg * msg){
   msg->pub_msg.from, msg->pub_msg.msg);
 }
 static void who(const struct api_msg * msg){
-  printf("users: %s\n", msg->who.users);
+  printf("users:\n%s\n", msg->who.users);
 }
 /**
  * @brief         Handles a message coming from server (i.e, worker)
@@ -201,7 +205,7 @@ static int execute_request(
       who(msg);
       break;
     default:
-      printf("Some error happened");
+      printf("Some error happened %d\n", msg->type);
       break;
     }
 
@@ -273,6 +277,7 @@ static int handle_incoming(struct client_state* state) {
    * here due to buffering (see ssl-nonblock example)
    */
   if (FD_ISSET(state->api.fd, &readfds)) {
+    if(!ssl_has_data(state->api.ssl)) return 0;
     return handle_server_request(state);
   }
   return 0;
@@ -321,7 +326,19 @@ int main(int argc, char **argv) {
   if (fd < 0) return 1;
 
   /* initialize API */
-  api_state_init(&state.api, fd);
+  api_state_init(&state.api, fd, TLS_client_method());
+
+  int res;
+  // SSL handshake
+  if((res = ssl_block_connect(state.api.ssl, state.api.fd)) != 1){
+    printf("Fatal error %d\n", res=SSL_get_error(state.api.ssl, res));
+    
+    if(res == SSL_ERROR_SSL){
+        printf("\t(%s)\n", ERR_error_string(ERR_get_error(), NULL));
+    }
+    
+    return 1;
+  }
 
   /* client things */
   while (!state.eof && handle_incoming(&state) == 0);

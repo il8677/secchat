@@ -22,7 +22,7 @@ def generateCert(dir, name):
     os.system(f"openssl req -new -key {dir}/priv.pem -out {dir}/csr.pem -nodes -subj '/CN={name}\.secchat\.com'")
     
     # CA signs
-    os.system(f"openssl x509 -req -CA {ttpdir}/ca-cert.pem -CAkey {ttpdir}/priv.pem -CAcreateserial -in {dir}/csr.pem -out {dir}/{name}-cert.pem")
+    os.system(f"openssl x509 -req -CA {ttpdir}/ca-cert.pem -CAkey {ttpdir}/priv.pem -CAcreateserial -in {dir}/csr.pem -out {dir}/cert.pem")
 
 
 if __name__ == "__main__":

@@ -303,7 +303,6 @@ static int server_state_init(struct server_state* state) {
   state->sharedmem = mmap(NULL, MAX_USER_LEN, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   memset(state->sharedmem, '\0', MAX_USER_LEN*MAX_CONNECTIONS);
 
-
   return 0;
 }
 

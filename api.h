@@ -2,6 +2,7 @@
 #define _API_H_
 
 #include <stdint.h>
+#include <openssl/ssl.h>
 
 #define MAX_USER_LEN 10
 #define MAX_MSG_LEN 160
@@ -66,8 +67,10 @@ struct api_msg {
 };
 
 struct api_state {
-  /// @brief File descriptor of socket
   int fd;
+
+  SSL_CTX* ctx;
+  SSL* ssl;
 };
 
 int api_recv(struct api_state* state, struct api_msg* msg);
@@ -75,6 +78,6 @@ void api_recv_free(struct api_msg* msg);
 int api_send(struct api_state* state, struct api_msg* msg);
 
 void api_state_free(struct api_state* state);
-void api_state_init(struct api_state* state, int fd);
+void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method);
 
 #endif /* defined(_API_H_) */
