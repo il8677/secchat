@@ -5,6 +5,8 @@
 #include "db.h"
 #include "errcodes.h"
 
+#include <openssl/sha.h>
+
 // Macros to stringify other macros
 // STR2 stringifies input, STR expands to STR2(x), so x will be expanded and stringified. C is such a quaint language.
 #define STR2(x) #x
@@ -50,7 +52,7 @@ void db_create(struct db_state* state){
     "CREATE TABLE IF NOT EXISTS users ( \
         id INTEGER PRIMARY KEY AUTOINCREMENT, \
         username VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL UNIQUE, \
-        password VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL);", 
+        password BLOB(" STR(SHA_DIGEST_LENGTH) ") NOT NULL);", 
     NULL, NULL);
 
     // Create message db

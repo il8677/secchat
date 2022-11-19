@@ -12,7 +12,11 @@ clean:
 ui.o: ui.c ui.h
 
 sslnonblock.o: vendor/ssl-nonblock.h vendor/ssl-nonblock.c
-	cc -g -Wall -Werror -UDEBUG -c -o sslnonblock.o vendor/ssl-nonblock.c
+	cc -g $(CFLAGS) -c -o sslnonblock.o vendor/ssl-nonblock.c
+
+crypto.o: crypto.h crypto.c
+	cc -g $(CFLAGS) -c -o crypto.o crypto.c
+
 client.o: client.c api.h ui.h util.h
 
 api.o: api.c api.h
@@ -25,7 +29,7 @@ util.o: util.c util.h
 
 worker.o: worker.c util.h worker.h errcodes.h db.h
 
-client: sslnonblock.o client.o api.o ui.o util.o
+client: sslnonblock.o client.o api.o ui.o util.o crypto.o
 
 server: sslnonblock.o server.o api.o util.o worker.o db.o
 
