@@ -259,8 +259,7 @@ static int handle_client_request(struct worker_state* state) {
 
   /* wait for incoming request, set eof if there are no more requests */
   r = api_recv(&state->api, &msg);
-  if (r < 0) return -1;
-  if (r == 0) {
+  if (r == -1) {
     printf("server receive eof\n");
     state->eof = 1;
     return 0;
