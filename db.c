@@ -48,7 +48,7 @@ void db_create(struct db_state* state){
     sql_exec(state->db, "PRAGMA journal_mode = WAL;", NULL, NULL);
 
     // Create user DB
-    sql_exec(state->db, 
+    int res = sql_exec(state->db, 
     "CREATE TABLE IF NOT EXISTS users ( \
         id INTEGER PRIMARY KEY AUTOINCREMENT, \
         username VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL UNIQUE, \
