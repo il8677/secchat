@@ -8,6 +8,7 @@
 #include "ui.h"
 #include "api.h"
 #include "errcodes.h"
+#include "crypto.h"
 
 /**
  * @brief         Frees ui_state context
@@ -109,7 +110,7 @@ int input_handle_login(struct api_msg* apimsg, char* p) {
 
   apimsg->type = LOGIN;
   strcpy(apimsg->login.username, username);
-  strcpy(apimsg->login.password, password);
+  hash(password, strlen(password), apimsg->login.password);
 
   return 0;
 }
@@ -128,7 +129,7 @@ int input_handle_register(struct api_msg* apimsg, char* p) {
   
   apimsg->type = REG;
   strcpy(apimsg->reg.username, username);
-  strcpy(apimsg->reg.password, password);
+  hash(password, strlen(password), apimsg->login.password);
   
   return 0;
 }
