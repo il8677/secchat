@@ -340,9 +340,7 @@ static int handle_incoming(struct worker_state* state) {
   }
 
   /* handle ready file descriptors */
-  /* TODO once you implement encryption you may need to call ssl_has_data
-   * here due to buffering (see ssl-nonblock example)
-   */
+
   if (FD_ISSET(state->api.fd, &readfds)) {
     if(!ssl_has_data(state->api.ssl)) return 0;
     if (handle_client_request(state) != 0) success = 0;

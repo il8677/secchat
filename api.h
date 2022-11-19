@@ -53,7 +53,7 @@ struct api_msg {
 
     struct {
       char username[MAX_USER_LEN];
-      char password[SHA_DIGEST_LENGTH];  // TODO: Make hash
+      char password[SHA_DIGEST_LENGTH];
     } login;
 
     struct {
