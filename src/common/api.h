@@ -13,7 +13,7 @@
 
 #define MAX_CONNECTIONS 16
 
-enum msg_type_t { ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, EXIT };
+enum msg_type_t {NONE, ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, EXIT };
 
 typedef signed long timestamp_t;
 
