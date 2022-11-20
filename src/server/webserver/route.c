@@ -14,6 +14,7 @@ struct www_route {
 };
 
 www_route* www_route_init(const char* path, const char* filepath){
+    printf("[web] Initializing new route %s: %s\n", path, filepath);
     // TODO: File error handling
     // Open file and read length
     FILE* f = fopen(filepath, "r");
@@ -72,7 +73,7 @@ void www_route_add(www_route* head, www_route* newRoute){
 
 static www_route* www_route_objectfind(www_route* head, const char* path, const char* method){
     while(head != NULL){
-        if(strcmp(head->path, path) == 0 && strcmp(head->method, method)) return head;
+        if(strcmp(head->path, path) == 0 && strcmp(head->method, method)==0) return head;
         head = head->next;
     } 
 

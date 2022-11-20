@@ -1,10 +1,12 @@
 #ifndef ROUTE_H
 #define ROUTE_H
 
+struct api_state;
+
 typedef struct www_route www_route;
 
-// Callback to a POST request, returns 1 for success, -1 for failure, takes in the body of the post
-typedef int(*post_cb_t)(const char* body);
+// Callback to a POST request, returns 1 for success, -1 for failure, takes in the body of the post, and a pointer to an API msg
+typedef int(*post_cb_t)(const char* body, struct api_state* state);
 
 /// @brief Initializes a new GET www_route object
 /// @param path Path of the route

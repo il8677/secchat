@@ -15,6 +15,7 @@
 #include "../util/util.h"
 #include "worker/worker.h"
 #include "protocols/prot_client.h"
+#include "protocols/prot_http.h"
 #include "apicallbacks.h"
 
 #include "../common/api.h"
@@ -139,7 +140,7 @@ static void close_server_handles(struct server_state* state) {
 /// @param state The server state
 /// @param callbacks The API callbacks to use for the connection
 /// @return 
-static int handle_connection(struct server_state* state, struct api_callbacks callbacks) {
+static int handle_connection(struct server_state* state, int fd, struct api_callbacks callbacks) {
   struct sockaddr addr;
   socklen_t addrlen = sizeof(addr);
   int connfd;
@@ -147,9 +148,8 @@ static int handle_connection(struct server_state* state, struct api_callbacks ca
   int sockets[2];
 
   assert(state);
-
   /* accept incoming connection */
-  connfd = accept(state->sockfd, &addr, &addrlen);
+  connfd = accept(fd, &addr, &addrlen);
   if (connfd < 0) {
     if (errno == EINTR) return 0;
     perror("error: accepting new connection failed");
@@ -349,18 +349,19 @@ static int handle_incoming(struct server_state* state) {
   }
 
   /* wait for at least one to become ready */
-  r = select(fdmax+1, &readfds, &writefds, NULL, NULL);
+  r = select(fdmax+2, &readfds, &writefds, NULL, NULL);
   if (r < 0) {
     if (errno == EINTR) return 0;
     perror("error: select failed");
     return -1;
   }
-
   /* handle ready file descriptors */
   if (FD_ISSET(state->sockfd, &readfds)) {
-    if (handle_connection(state,  (struct api_callbacks){protc_handle_s2w, api_send, api_recv}) != 0) success = 0;
-  }else if (FD_ISSET(state->httpsock, &readfds)){
-
+    if (handle_connection(state, state->sockfd, (struct api_callbacks){protc_handle_s2w, api_send, api_recv}) != 0) success = 0;
+  }
+  
+  if (FD_ISSET(state->httpsock, &readfds)){
+    if (handle_connection(state, state->httpsock, (struct api_callbacks){protht_notify, protht_send, protht_recv}) != 0) success = 0;
   }
 
   for (i = 0; i < MAX_CONNECTIONS; i++) {
@@ -389,6 +390,9 @@ int main(int argc, char **argv) {
   uint16_t port;
   struct server_state state;
 
+  // Initialize HTTP server
+  protht_init();
+
   /* check arguments */
   if (argc != 2) usage();
   if (parse_port(argv[1], &port) != 0) usage();
@@ -402,7 +406,9 @@ int main(int argc, char **argv) {
   if (state.sockfd < 0) return 1;
 
   state.httpsock = create_server_socket(443);
-  if (state.sockfd < 0) return 1;
+  if (state.sockfd < 0) {
+    printf("[web] Warning! Could not create https port 443, maybe run with sudo?\n");
+  }
 
   /* wait for connections */
   for (;;) {

@@ -32,6 +32,15 @@ client.o: src/client/client.c src/common/api.h src/client/ui.h src/util/util.h
 api.o: src/common/api.c src/common/api.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
+route.o: src/server/webserver/route.c src/server/webserver/route.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+httputil.o: src/server/webserver/httputil.c src/server/webserver/httputil.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+protht.o: src/server/protocols/prot_http.c src/server/protocols/prot_http.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
 db.o: src/server/db.c src/server/db.h src/common/api.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
@@ -46,7 +55,7 @@ worker.o: src/server/worker/worker.c src/util/util.h src/server/worker/worker.h 
 
 client: sslnonblock.o client.o api.o ui.o util.o crypto.o
 
-server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o
+server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o
 
 keys-server: keys-ttp
 	python3 ttp.py server

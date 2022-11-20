@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <openssl/err.h>
 
 #include "../../util/util.h"
 #include "../../../vendor/ssl-nonblock.h"
@@ -90,19 +91,23 @@ static int handle_incoming(struct worker_state* state) {
 __attribute__((noreturn)) void worker_start(int connfd, int server_fd, char* sharedmem, int index, struct api_callbacks callbacks) {
   struct worker_state state;
   int success = 1;
-
+  printf("worker-Start\n");
   /* initialize worker state */
   if (worker_state_init(&state, connfd, server_fd, sharedmem, index, callbacks) != 0) {
     goto cleanup;
   }
 
   int res;
+  printf("Waiting for SSL handshake\n");
   // SSL handshake
-  if((res = ssl_block_accept(state.api.ssl, state.api.fd)) != 1){
-    printf("Fatal error %d\n", SSL_get_error(state.api.ssl, res));
+  if((res = SSL_accept(state.api.ssl)) != 1){
+    printf("Fatal error %d\n", res=SSL_get_error(state.api.ssl, res));
+    if(res==SSL_ERROR_SSL)
+        printf("\t(%s)\n", ERR_error_string(ERR_get_error(), NULL));
     goto cleanup;
   }
-  
+  set_nonblock(connfd);  
+
   printf("Handshake completed\n");
 
   /* handle for incoming requests */
