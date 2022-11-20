@@ -5,35 +5,44 @@ LDLIBS=-lsqlite3 -lcrypto -lssl
 
 all: client server
 
+# TODO: fix this mess
+
 clean:
 	rm -f server client *.o *.db*
 	rm -rf serverkeys ttpkeys clientkeys
 
-ui.o: ui.c ui.h
+ui.o: src/client/ui.c src/client/ui.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-sslnonblock.o: vendor/ssl-nonblock.h vendor/ssl-nonblock.c
-	cc -g $(CFLAGS) -c -o sslnonblock.o vendor/ssl-nonblock.c
+sslnonblock.o: vendor/ssl-nonblock.c vendor/ssl-nonblock.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-crypto.o: crypto.h crypto.c
-	cc -g $(CFLAGS) -c -o crypto.o crypto.c
+crypto.o: src/util/crypto.c
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-workerapi.o: workerapi.h workerapi.c prot_client.c
-	cc -g $(CFLAGS) -c -o workerapi.o workerapi.c
+workerapi.o: src/server/worker/workerapi.c src/server/worker/workerapi.h src/server/protocols/prot_client.c
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-protc.o: prot_client.c prot_client.h
-	cc -g $(CFLAGS) -c -o protc.o prot_client.c
+protc.o: src/server/protocols/prot_client.c src/server/protocols/prot_client.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-client.o: client.c api.h ui.h util.h
+client.o: src/client/client.c src/common/api.h src/client/ui.h src/util/util.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-api.o: api.c api.h
+api.o: src/common/api.c src/common/api.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-db.o: db.c db.h errcodes.h api.h
+db.o: src/server/db.c src/server/db.h src/common/api.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-server.o: server.c util.h db.h errcodes.h api.o keys-server
+server.o: src/server/server.c src/util/util.h src/server/db.h api.o keys-server
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-util.o: util.c util.h
+util.o: src/util/util.c src/util/util.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-worker.o: worker.c util.h worker.h errcodes.h db.h workerapi.h
+worker.o: src/server/worker/worker.c src/util/util.h src/server/worker/worker.h src/server/db.h src/server/worker/workerapi.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
 client: sslnonblock.o client.o api.o ui.o util.o crypto.o
 

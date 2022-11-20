@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "api.h"
-#include "vendor/ssl-nonblock.h"
+#include "../../vendor/ssl-nonblock.h"
 
 /**
  * @brief         Receive the next message from the sender and stored in @msg
