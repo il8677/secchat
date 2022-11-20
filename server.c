@@ -14,6 +14,8 @@
 
 #include "util.h"
 #include "worker.h"
+#include "prot_client.h"
+#include "apicallbacks.h"
 
 #include "api.h"
 
@@ -171,7 +173,7 @@ static int handle_connection(struct server_state* state) {
     /* worker process */
     close(sockets[0]);
     close_server_handles(state);
-    worker_start(connfd, sockets[1], state->sharedmem, index);
+    worker_start(connfd, sockets[1], state->sharedmem, index, (struct api_callbacks){protc_handle_s2w, api_send, api_recv});
     /* never reached */
     exit(1);
   }

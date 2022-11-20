@@ -5,6 +5,23 @@ The client starts with seperating the command from the message in "client_proces
 ## server and worker
 The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify the request. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track with a block of shared memory, which the workers accesses when building the response to a /users command.
 
+### Worker API
+The server is designed to be protocol agnostic. The API to interact with the data is defined in workerapi.h. Files in the directory protocols/ handles interfacing with the different connections. The worker API interacts with function callbacks for send/recv/notify that are set depending on the protocol. This forms a sort of stack, with the lower transport-like layer dealing with protocol-based communications (ex. http or the client api), and the upper transport-agnostic layer dealing with the actual database, and forming api_msgs for the lower layer to send. The server spawns the appropriate worker to deal with different protocols depending on how a connetion is established.
+
+                                                    ---------------
+                                                    |     db      |
+                                                    ---------------
+                                                    |  workerapi  |
+                            ----------   spawns     --------------- -> send, recv, notify
+                            | server | -----------> |  http | api | 
+                            ----------   worker     ---------------
+                                                    |     SSL     |
+                                                    ----|-----|----
+                                                        V     V  TCP
+                                                    ---------------
+                                                    |browsr|client|
+                                                    ---------------
+
 ## wrapping up
 If a message was recieved, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then displays the correct message.   
 
