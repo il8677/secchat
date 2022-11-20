@@ -110,7 +110,7 @@ int input_handle_login(struct api_msg* apimsg, char* p) {
 
   apimsg->type = LOGIN;
   strcpy(apimsg->login.username, username);
-  hash(password, strlen(password), apimsg->login.password);
+  hash(password, strlen(password), (unsigned char*)apimsg->login.password);
 
   return 0;
 }
@@ -129,7 +129,7 @@ int input_handle_register(struct api_msg* apimsg, char* p) {
   
   apimsg->type = REG;
   strcpy(apimsg->reg.username, username);
-  hash(password, strlen(password), apimsg->login.password);
+  hash(password, strlen(password), (unsigned char*)apimsg->login.password);
   
   return 0;
 }
