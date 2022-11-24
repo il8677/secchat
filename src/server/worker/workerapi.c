@@ -172,6 +172,8 @@ int handle_client_request(struct worker_state* state) {
     return 0;
   }
 
+  if(msg.type==NONE) return 0;
+
   /* execute request */
   if ((errcode = verify_request(state, &msg)) == 1) {
     errcode = execute_request(state, &msg);

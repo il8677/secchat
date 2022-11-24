@@ -83,6 +83,5 @@ void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method) {
   state->ctx = SSL_CTX_new(method);
   state->ssl = SSL_new(state->ctx);
   
-  set_nonblock(fd);  
   SSL_set_fd(state->ssl,  fd);
 }
