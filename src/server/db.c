@@ -16,7 +16,8 @@
 /// @param x The statement to execute
 /// @param db The database to get the error message from
 /// @param ret The error return value
-#define SQL_CALL(x, db, ret) if(SQLITE_OK != (x)) { fprintf(stderr, "Line %d: Error running " STR2(x) "\n\t%s\n", __LINE__, sqlite3_errmsg(db)); return ret;}
+/// @param retvar Where to put the return
+#define SQL_CALL(x, db, ret, retvar) if(SQLITE_OK != (x)) { fprintf(stderr, "Line %d: Error running " STR2(x) "\n\t%s\n", __LINE__, sqlite3_errmsg(db)); retvar = ret; goto cleanup; }
 
 /// @brief Executes a sql statement
 /// @param db the database
@@ -68,6 +69,7 @@ void db_create(struct db_state* state){
     NULL, NULL);
 }
 
+// TODO: Cleanup this function
 int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*), timestamp_t* lastviewed){
     char* query = sqlite3_mprintf("SELECT messages.id, su.username, ru.username, msg, timestamp \
                             FROM messages INNER JOIN users AS su ON su.id == sender \
@@ -77,7 +79,8 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
 
     sqlite3_stmt* statement;
 
-    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
+    int retvalue = 0;
+    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, ERR_SQL, retvalue);
 
     int res = sqlite3_step(statement);
     timestamp_t timestamp; // Keep track of last id read so if a new message comes in while the function is running it is still displayed
@@ -114,16 +117,16 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
             row.type=PRIV_MSG;
         }
 
-        // We can reuse res since it will be ovewritten
-        if((res = cb(astate, &row))) return res;
+        if((retvalue = cb(astate, &row))) goto cleanup;
 
         res = sqlite3_step(statement);
     }
 
+    cleanup:
     sqlite3_finalize(statement);
     sqlite3_free(query);
 
-    return 0;
+    return retvalue;
 }
 
 /// @brief Returns an ID for name
@@ -135,13 +138,14 @@ int nametoid(struct db_state* state, const char* name){
     char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=%Q;", name);
     sqlite3_stmt* statement;
 
-    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
+    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, ERR_SQL, retvalue);
 
     // If there was a result, the name was found
     if(sqlite3_step(statement) == SQLITE_ROW)
         retvalue = sqlite3_column_int(statement, 0);
     
 
+    cleanup:
     sqlite3_finalize(statement);
     sqlite3_free(query);
 
@@ -158,13 +162,13 @@ int verify_login(struct db_state* state, const char* username, const char* passw
     char* query = sqlite3_mprintf("SELECT id FROM users WHERE username=%Q AND password=%Q;", username, password);
     sqlite3_stmt* statement;
 
-    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, -1);
+    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, ERR_SQL, retvalue);
 
     // If there was a result, user / password is correct
     if(sqlite3_step(statement) == SQLITE_ROW)
         retvalue = sqlite3_column_int(statement, 0);
     
-
+    cleanup:
     sqlite3_finalize(statement);
     sqlite3_free(query);
 
@@ -175,6 +179,7 @@ int verify_login(struct db_state* state, const char* username, const char* passw
 int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
     char* query = NULL;
 
+    // Create relevant query to insert message
     if(msg->type == PRIV_MSG){
         int id = nametoid(state, msg->priv_msg.to);
 
@@ -192,11 +197,9 @@ int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
 
     int res = sql_exec(state->db, query, NULL, NULL);
 
-        sqlite3_free(query);
-    if(res != SQLITE_OK)
-        return ERR_SQL;
+    sqlite3_free(query);
     
-    return 0;
+    return res == SQLITE_OK ? 0 : ERR_SQL;
 }
 
 int db_state_init(struct db_state* state){
@@ -221,12 +224,13 @@ int db_register(struct db_state* state, const struct api_msg* msg){
 
     int res = sql_exec(state->db, query, NULL, NULL);
 
-    if(res == SQLITE_CONSTRAINT_UNIQUE) return ERR_USERNAME_EXISTS;
-    else if(res != SQLITE_OK) return ERR_SQL;
+    if(res == SQLITE_CONSTRAINT_UNIQUE) res = ERR_USERNAME_EXISTS;
+    else if(res != SQLITE_OK) res = ERR_SQL;
+    else res = nametoid(state, msg->reg.username);
 
     sqlite3_free(query);
 
-    return nametoid(state, msg->reg.username);
+    return res;
 }
 
 int db_login(struct db_state* state, const struct api_msg* msg){
