@@ -148,6 +148,7 @@ static int handle_connection(struct server_state* state, int fd, struct api_call
   int sockets[2];
 
   assert(state);
+  printf("============ACCEPTING %d\n", fd);
   /* accept incoming connection */
   connfd = accept(fd, &addr, &addrlen);
   if (connfd < 0) {
@@ -288,7 +289,7 @@ static void register_signals(void) {
 
 static void usage(void) {
   printf("usage:\n");
-  printf("  server port\n");
+  printf("  server port [y/n do webserver]\n");
   exit(1);
 }
 
@@ -304,6 +305,7 @@ static int server_state_init(struct server_state* state) {
   for (i = 0; i < MAX_CONNECTIONS; i++) {
     state->children[i].worker_fd = -1;
   }
+  state->httpsock = -1;
 
   state->sharedmem = mmap(NULL, MAX_USER_LEN, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   memset(state->sharedmem, '\0', MAX_USER_LEN*MAX_CONNECTIONS);
@@ -361,6 +363,7 @@ static int handle_incoming(struct server_state* state) {
   }
   
   if (FD_ISSET(state->httpsock, &readfds)){
+    printf("Incoming https connection\n");
     if (handle_connection(state, state->httpsock, (struct api_callbacks){protht_notify, protht_send, protht_recv}) != 0) success = 0;
   }
 
@@ -390,12 +393,12 @@ int main(int argc, char **argv) {
   uint16_t port;
   struct server_state state;
 
-  // Initialize HTTP server
-  protht_init();
+  int doWebserver = 0;
 
   /* check arguments */
-  if (argc != 2) usage();
+  if (argc < 2) usage();
   if (parse_port(argv[1], &port) != 0) usage();
+  if (argc == 3) doWebserver = 1;
 
   /* preparations */
   server_state_init(&state);
@@ -403,11 +406,16 @@ int main(int argc, char **argv) {
 
   /* start listening for connections */
   state.sockfd = create_server_socket(port);
+  printf("===SOCKET CREATEED ON %d\n", state.sockfd);
   if (state.sockfd < 0) return 1;
 
-  state.httpsock = create_server_socket(443);
-  if (state.sockfd < 0) {
-    printf("[web] Warning! Could not create https port 443, maybe run with sudo?\n");
+  // Initialize HTTP server
+  if(doWebserver){
+    protht_init();
+    state.httpsock = create_server_socket(443);
+    if (state.httpsock < 0) {
+      printf("[web] Warning! Could not create https port 443, maybe run with sudo?\n");
+    }
   }
 
   /* wait for connections */
