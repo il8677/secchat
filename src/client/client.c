@@ -324,6 +324,7 @@ int main(int argc, char **argv) {
 
   /* initialize API */
   api_state_init(&state.api, fd, TLS_client_method());
+  set_nonblock(fd);
 
   int res;
   // SSL handshake
