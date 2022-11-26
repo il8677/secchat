@@ -106,7 +106,7 @@ __attribute__((noreturn)) void worker_start(int connfd, int server_fd, char* sha
         printf("\t(%s)\n", ERR_error_string(ERR_get_error(), NULL));
     goto cleanup;
   }
-  set_nonblock(connfd);  
+  set_nonblock(connfd);
 
   printf("Handshake completed\n");
 
