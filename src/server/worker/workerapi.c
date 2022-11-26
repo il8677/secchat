@@ -60,12 +60,10 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
     case PUB_MSG:
       if (!check_null_byte(msg->priv_msg.msg, MAX_MSG_LEN))
         return ERR_INVALID_API_MSG;
-
+      // We dont use from so we dont need to check it
     case LOGIN:
     case REG:
       if (!check_null_byte(msg->reg.username, MAX_USER_LEN))
-        return ERR_INVALID_API_MSG;
-      if (!check_null_byte(msg->reg.password, MAX_USER_LEN))
         return ERR_INVALID_API_MSG;
       break;
 
