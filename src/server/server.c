@@ -148,7 +148,6 @@ static int handle_connection(struct server_state* state, int fd, struct api_call
   int sockets[2];
 
   assert(state);
-  printf("============ACCEPTING %d\n", fd);
   /* accept incoming connection */
   connfd = accept(fd, &addr, &addrlen);
   if (connfd < 0) {
