@@ -405,7 +405,6 @@ int main(int argc, char **argv) {
 
   /* start listening for connections */
   state.sockfd = create_server_socket(port);
-  printf("===SOCKET CREATEED ON %d\n", state.sockfd);
   if (state.sockfd < 0) return 1;
 
   // Initialize HTTP server
