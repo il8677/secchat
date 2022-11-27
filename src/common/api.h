@@ -13,6 +13,23 @@
 
 #define MAX_CONNECTIONS 16
 
+#define API_DEBUG
+#ifdef API_DEBUG
+  #define API_PRINT_MSG(dmsg, apimsg) switch(apimsg.type){\
+    case NONE: printf("["dmsg"] None\n"); break;\
+    case ERR: printf("["dmsg"] ERR %d\n", apimsg.errcode); break;\
+    case STATUS: printf("["dmsg"] STATUS %.*s\n", MAX_MSG_LEN, apimsg.status.statusmsg); break;\
+    case PRIV_MSG: printf("["dmsg"] MSG %.*s -> %.*s: %.*s\n", MAX_USER_LEN, apimsg.priv_msg.from, MAX_USER_LEN, apimsg.priv_msg.to, MAX_MSG_LEN, apimsg.priv_msg.msg); break;\
+    case PUB_MSG: printf("["dmsg"] MSG %.*s: %.*s\n", MAX_USER_LEN, apimsg.pub_msg.from, MAX_MSG_LEN, apimsg.pub_msg.msg); break;\
+    case WHO: printf("["dmsg"] WHO\n"); break;\
+    case REG: case LOGIN: printf("["dmsg"] LOGIN/REG %.*s %.*s\n", MAX_USER_LEN, apimsg.reg.username, MAX_USER_LEN, apimsg.reg.password); break;\
+    case EXIT: printf("["dmsg"] EXIT\n"); break;\
+    default: printf("["dmsg"] UNRECONGIZED\n"); break;\
+  }
+#else
+  #define API_PRINT_MSG(msg, apimsg)
+#endif
+
 enum msg_type_t {NONE, ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, EXIT };
 
 typedef signed long timestamp_t;
