@@ -78,8 +78,11 @@ function getLogin(username, password){
 }
 
 function getReg(username, password){
+    username = nullpad(username, MAX_USER_LEN);
+    password = nullpad(password, MAX_USER_LEN);
+
     const b = new Blob([
-        new Uint32Array([msgtype.LOGIN]),
+        new Uint32Array([msgtype.REG]),
         new Uint8Array([0]),
         new String(username),
         new String(password)
