@@ -323,6 +323,7 @@ int main(int argc, char **argv) {
   if (fd < 0) return 1;
 
   /* initialize API */
+  // TODO: Verify server certificate
   api_state_init(&state.api, fd, TLS_client_method());
   set_nonblock(fd);
 
