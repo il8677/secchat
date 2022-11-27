@@ -54,7 +54,7 @@ char *read_input(size_t size) {
  * @param msg     Msg of user to check
 */
 int message_too_long(char* msg) {
-  return strlen(msg) > MAX_MSG_LEN;  
+  return strlen(msg)+1 > MAX_MSG_LEN;  
 }
 
 int input_handle_privmsg(struct api_msg* apimsg, char* p) {
@@ -71,8 +71,8 @@ int input_handle_privmsg(struct api_msg* apimsg, char* p) {
   while (msg < msg+strlen(msg) && isspace(*msg)) msg++;
 
   apimsg->type = PRIV_MSG;
-  strcpy(apimsg->priv_msg.to, to);
-  strcpy(apimsg->priv_msg.msg, msg); 
+  strncpy(apimsg->priv_msg.to, to, MAX_USER_LEN);
+  strncpy(apimsg->priv_msg.msg, msg, MAX_MSG_LEN); 
 
   return 0;
 }
@@ -105,11 +105,10 @@ int input_handle_login(struct api_msg* apimsg, char* p) {
   char* tok = strtok(NULL, " ");
   if (tok != NULL) return ERR_INVALID_NR_ARGS;
 
-  if (strlen(username) > MAX_USER_LEN) return ERR_USERNAME_TOOLONG;
-  if (strlen(password) > MAX_USER_LEN) return ERR_PASSWORD_TOOLONG;
+  if (strlen(username)+1 > MAX_USER_LEN) return ERR_USERNAME_TOOLONG;
 
   apimsg->type = LOGIN;
-  strcpy(apimsg->login.username, username);
+  strncpy(apimsg->login.username, username, MAX_USER_LEN);
   hash(password, strlen(password), (unsigned char*)apimsg->login.password);
 
   return 0;
@@ -121,14 +120,13 @@ int input_handle_register(struct api_msg* apimsg, char* p) {
   char *password = strtok(NULL, " ");
   if (password == NULL) return ERR_PASSWORD_INVALID;
 
-  if (strlen(username) > MAX_USER_LEN) return ERR_USERNAME_TOOLONG;
-  if (strlen(password) > MAX_USER_LEN) return ERR_PASSWORD_TOOLONG;
+  if (strlen(username)+1 > MAX_USER_LEN) return ERR_USERNAME_TOOLONG;
 
   char* tok = strtok(NULL, " ");
   if (tok != NULL) return ERR_INVALID_NR_ARGS;
   
   apimsg->type = REG;
-  strcpy(apimsg->reg.username, username);
+  strncpy(apimsg->reg.username, username, MAX_USER_LEN);
   hash(password, strlen(password), (unsigned char*)apimsg->login.password);
   
   return 0;
@@ -144,7 +142,7 @@ int input_handle_pubmsg(struct api_msg* apimsg, char* p) {
   if (message_too_long(p_start)) return ERR_MESSAGE_TOOLONG;
   
   apimsg->type = PUB_MSG;
-  strcpy(apimsg->pub_msg.msg, p_start);
+  strncpy(apimsg->pub_msg.msg, p_start, MAX_MSG_LEN);
   
   return 0;
 }
