@@ -36,7 +36,10 @@ char *read_input(size_t size) {
   size_t len = 0;
 
   while ('\n' != (c = fgetc(stdin))) {
-    if (c == EOF) return NULL;
+    if (c == EOF) {
+      free(input); 
+      return NULL;
+    }
     input[len++] = c;
     if (len == size) {
       input = realloc(input, sizeof(*input)*(size+=16));
