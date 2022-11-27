@@ -40,6 +40,7 @@ void www_route_initadd(www_route* head, const char* name, const char* path){
 }
 
 www_route* www_route_post_init(const char* path, post_cb_t cb){
+    printf("[web] Initializing new route %s: %p\n", path, cb);
     www_route* route = mmap(NULL, sizeof(www_route) + sizeof(post_cb_t), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     strncpy(route->path, path, 25);
     strcpy(route->method, "POST");
@@ -91,7 +92,7 @@ char* www_route_find(www_route* head, const char* path){
 post_cb_t www_route_find_post(www_route* head, const char* path){
     www_route* route = www_route_objectfind(head, path, "POST");
 
-    post_cb_t cb = route == NULL ? NULL : (post_cb_t)route->contents;
+    post_cb_t cb = route == NULL ? NULL : *(post_cb_t*)route->contents;
 
     return cb;
 }

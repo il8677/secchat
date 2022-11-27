@@ -170,6 +170,8 @@ int handle_client_request(struct worker_state* state) {
     return 0;
   }
 
+  API_PRINT_MSG("recv", msg);
+
   if(msg.type==NONE) return 0;
 
   /* execute request */

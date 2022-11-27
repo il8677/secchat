@@ -2,6 +2,7 @@
 
 CFLAGS=-g -Wall -Werror -UDEBUG
 LDLIBS=-lsqlite3 -lcrypto -lssl
+LDFLAGS=-fsanitize=address
 
 all: client server
 

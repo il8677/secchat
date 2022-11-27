@@ -20,3 +20,9 @@ void send404(SSL* ssl, int fd){
 
     ssl_block_write(ssl, fd, err404, sizeof(err404));
 }
+
+void send400(SSL* ssl, int fd){
+    static const char err404[] = "HTTP/1.1 400 Not Found\nconnection: keep-alive\ncontent-length: 0\n\n"; 
+
+    ssl_block_write(ssl, fd, err404, sizeof(err404));
+}
