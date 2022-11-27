@@ -40,7 +40,7 @@ struct api_msg {
 
   enum msg_type_t type;
 
-  char errcode;
+  uint32_t errcode;
 
   union {
     struct {
