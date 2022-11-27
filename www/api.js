@@ -33,7 +33,7 @@ function getPrivMsg(timestamp, msg, to){
 
     const b = new Blob([
         new Uint32Array([msgtype.PRIV_MSG]),         // Type
-        new Uint8Array([0]),                 // Errcode
+        new Uint32Array([0]),                 // Errcode
         new Uint8Array(timestampSize),
         new String(msg),                      // msg
         new String(from),
@@ -48,7 +48,7 @@ function getPubMsg(timestamp, msg){
 
     const b = new Blob([
         new Uint32Array([msgtype.PUB_MSG]),         // Type
-        new Uint8Array([0]),                 // Errcode
+        new Uint32Array([0]),                 // Errcode
         new Uint8Array(timestampSize),
         new String(msg)                      // msg
     ]);
@@ -69,7 +69,7 @@ function getLogin(username, password){
     // TODO: hashing
     const b = new Blob([
         new Uint32Array([msgtype.LOGIN]),
-        new Uint8Array([0]),
+        new Uint32Array([0]),
         new String(username),
         new String(password)
     ]);
@@ -83,7 +83,7 @@ function getReg(username, password){
 
     const b = new Blob([
         new Uint32Array([msgtype.REG]),
-        new Uint8Array([0]),
+        new Uint32Array([0]),
         new String(username),
         new String(password)
     ]);

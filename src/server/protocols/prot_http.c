@@ -10,7 +10,7 @@
 
 www_route* routes = NULL;
 
-static int post_to_http(const char* body, struct api_msg* msg, unsigned short len){
+static int post_to_apimsg(const char* body, struct api_msg* msg, unsigned short len){
     // Copy the body to the msg. Theoretically this copy junk, but the rest of the system will manage safety.
     memset(msg, 0, sizeof(struct api_msg));
     memcpy(msg, body, len);
@@ -22,7 +22,7 @@ void protht_init(){
     if(routes == NULL){
         routes = www_route_init("/", "www/index.html");
         www_route_initadd(routes, "/login", "www/login.html");
-        www_route_post_initadd(routes, "/login", post_to_http);
+        www_route_post_initadd(routes, "/login", post_to_apimsg);
         www_route_initadd(routes, "/api.js", "www/api.js");
     }
 }
@@ -94,6 +94,8 @@ int protht_recv(struct api_state* state, struct api_msg* msg){
             send400(state->ssl, state->fd);
             return 1;
         }
+
+        printf("[web: post] recieved api_msg len %u\n", bodyLen);
 
         return cb(body, msg, bodyLen);
     }
