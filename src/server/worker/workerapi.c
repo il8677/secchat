@@ -119,26 +119,27 @@ static void setUser(struct worker_state* state, int uid, const char* username){
     notify_workers(state);
 }
 
+void worker_api_init(struct api_state* state, int connfd){
+    /* set up API state */
+    api_state_init(state, connfd, TLS_server_method());
+    SSL_use_certificate_file(state->ssl, "serverkeys/cert.pem", SSL_FILETYPE_PEM);
+    SSL_use_PrivateKey_file(state->ssl, "serverkeys/priv.pem", SSL_FILETYPE_PEM);
+}
+
 int worker_state_init(struct worker_state* state, int connfd,
                              int server_fd, char* name, int index, struct api_callbacks callbacks) {
   /* initialize */
   memset(state, 0, sizeof(*state));
+
   state->server_fd = server_fd;
-
-  /* set up API state */
-  api_state_init(&state->api, connfd, TLS_server_method());
-
   state->uid = -1;
+  state->names = name;
+  state->index = index;
+  state->apifuncs = callbacks;
 
   db_state_init(&(state->dbConn));
 
-  state->names = name;
-  state->index = index;
-
-  state->apifuncs = callbacks;
-
-  SSL_use_certificate_file(state->api.ssl, "serverkeys/cert.pem", SSL_FILETYPE_PEM);
-  SSL_use_PrivateKey_file(state->api.ssl, "serverkeys/priv.pem", SSL_FILETYPE_PEM);
+  worker_api_init(&state->api, connfd);
 
   return 0;
 }
