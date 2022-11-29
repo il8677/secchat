@@ -22,8 +22,6 @@ struct worker_state {
   struct api_callbacks apifuncs;
 };
 
-/// @brief Initializes a worker_api for the server
-void worker_api_init(struct api_state* state, int connfd);
 
 /**
  * @brief Initialize struct worker_state before starting processing requests.

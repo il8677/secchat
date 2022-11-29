@@ -15,9 +15,6 @@ clean:
 ui.o: src/client/ui.c src/client/ui.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-webserver.o: src/server/webserver/webserver.c src/server/webserver/webserver.h
-	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
-
 sslnonblock.o: vendor/ssl-nonblock.c vendor/ssl-nonblock.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
@@ -59,7 +56,7 @@ worker.o: src/server/worker/worker.c src/util/util.h src/server/worker/worker.h 
 
 client: sslnonblock.o client.o api.o ui.o util.o crypto.o
 
-server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o webserver.o
+server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o
 
 keys-server: keys-ttp
 	python3 ttp.py server

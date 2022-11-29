@@ -17,7 +17,6 @@
 #include "protocols/prot_client.h"
 #include "protocols/prot_http.h"
 #include "apicallbacks.h"
-#include "webserver/webserver.h"
 
 #include "../common/api.h"
 
@@ -137,35 +136,6 @@ static void close_server_handles(struct server_state* state) {
   }
 }
 
-int handle_webserver_connection(int fd, struct server_state* state){
-    struct sockaddr addr;
-    socklen_t addrlen = sizeof(addr);
-
-    int connfd = accept(fd, &addr, &addrlen);
-
-    if(connfd < 0){
-        if(errno == EINTR) return 0;
-        perror("error: accepting a new connection failed");
-        return -1;
-    }
-
-    pid_t pid = fork();
-
-    if(pid == 0){
-        // Worker
-        close_server_handles(state);
-        web_start(connfd);
-    }
-
-    close(connfd);
-    if(pid == -1){
-        perror("error: cannot fork");
-        return -1;
-    }
-
-    return 0;
-}
-
 /// @brief Handle an incoming connection
 /// @param state The server state
 /// @param callbacks The API callbacks to use for the connection
@@ -199,7 +169,7 @@ static int handle_connection(struct server_state* state, int fd, struct api_call
     return -1;
   }
 
-  int index = child_add(state, sockets[0]); 
+  int index = child_add(state, sockets[0]);
   /* fork process to handle it */
   pid = fork();
   if (pid == 0) {
@@ -393,7 +363,7 @@ static int handle_incoming(struct server_state* state) {
   
   if (FD_ISSET(state->httpsock, &readfds)){
     printf("Incoming https connection\n");
-    if (handle_webserver_connection(state->httpsock, state) != 0) success = 0;
+    if (handle_connection(state, state->httpsock, (struct api_callbacks){protht_notify, protht_send, protht_recv}) != 0) success = 0;
   }
 
   for (i = 0; i < MAX_CONNECTIONS; i++) {
@@ -439,7 +409,7 @@ int main(int argc, char **argv) {
 
   // Initialize HTTP server
   if(doWebserver){
-    webserver_init();
+    protht_init();
     state.httpsock = create_server_socket(443);
     if (state.httpsock < 0) {
       printf("[web] Warning! Could not create https port 443, maybe run with sudo?\n");
