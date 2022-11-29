@@ -1,9 +1,56 @@
 <!DOCTYPE html>
+
 <head>
     <title>Hello World</title>
     <!-- Bootstrap (Not my code! Used so it doesn't look like a 1990's site) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+    <link href="/style.css" rel="stylesheet">
+
+    <script src="/api.js"></script>
+    <script src="/chat.js"></script>
+    <script src="/login.js"></script>
+
 </head>
+
 <body>
-    <a href="/login">Login</a>
+    <div class="container-fluid d-flex justify-content-center align-items-center"
+        style="height:100vh; overflow:hidden;">
+
+        <div class="row text-center d-flex align-items-center mainbox">
+            <!-- TODO: Rename these two -->
+            <div id="messagebox"></div>
+            <div id="msgbox">
+                <h2>Chat</h2>
+                <div id="messagebox"></div>
+                
+                <div id="chat"></div>
+    
+                <form id="msg-form">
+                    <input type="text" placeholder="Message" id="message" required>
+                    <button type="submit">Send</button>
+                </form>
+            </div>    
+
+            <div id="loginbox">
+                <h2>Login</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" class="form-control" placeholder="Username" id="username" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" class="form-control" placeholder="Password" id="password" required>
+                    </div>
+                    <!-- Store the clicked butotn so the handler knows which action to take -->
+                    <button onclick="this.form.submitted=this.value;" type="submit" class="btn btn-primary"
+                        name="action" value="login">Login</button>
+                    <button onclick="this.form.submitted=this.value;" type="submit" class="btn btn-primary"
+                        name="action" value="register">Register</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>

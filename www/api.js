@@ -1,3 +1,13 @@
+/*
+    This is probably terrible javacscript code, and the html is probably also terrible. 
+    But the goal is to be secure, and I don't usually program in javacsript so I don't 
+    know best practices outside of general programming best practices
+*/
+
+// Globals
+
+const e_loggedIn = new Event("loggedIn");
+
 const msgtype = {
     NONE: 0,
     ERR: 1,
@@ -89,4 +99,70 @@ function getReg(username, password){
     ]);
 
     return b;
+}
+
+function errcodeToString(errcode){
+    switch(-errcode){
+        case 1: return "Internal Server Error";
+        case 2: return "Invalid name";
+        case 3: return "Invalid API Message";
+        case 4: return "Error: Username already exists";
+        case 5: return "Error: Invalid Username/Password";
+        case 6: return "Error: Authentication Error";
+        case 7: return "Error: No User";
+        case 8: return "Error: Already logged in";
+        case 9: return "Error: User does not exist";
+    }
+}
+
+// TODO: Merge with process message
+// Displays a message on a div given by outid
+// Returns if it was a valid message or not
+function showMessage(msg, outid){
+    const outElement = document.getElementById(outid);
+    if(msg.type == msgtype.ERR){
+        outElement.className = "alert alert-danger";
+        outElement.innerHTML = errcodeToString(msg.errcode);
+
+        if(msg.errcode == 8){
+            document.dispatchEvent(e_loggedIn);
+        }
+
+        return true;
+    }
+    else if(msg.type == msgtype.STATUS){
+        outElement.className = "alert alert-info";
+        outElement.innerHTML = msg.status;
+
+        // Ugly, but it will be fixed later when the method of login comfirmation changes
+        if(msg.status == "authentication succeeded"){
+            document.dispatchEvent(e_loggedIn);
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+function processMessage(msg){
+    // TODO: use switch
+    if(msg.type == msgtype.LOGIN){
+    }
+}
+
+// Taken from https://stackoverflow.com/questions/847185/convert-a-unix-timestamp-to-time-in-javascript
+function formatUnix(unix_timestamp){
+    // Create a new JavaScript Date object based on the timestamp
+    // multiplied by 1000 so that the argument is in milliseconds, not seconds.
+    var date = new Date(unix_timestamp * 1000);
+    // Hours part from the timestamp
+    var hours = date.getHours();
+    // Minutes part from the timestamp
+    var minutes = "0" + date.getMinutes();
+    // Seconds part from the timestamp
+    var seconds = "0" + date.getSeconds();
+
+    // Will display time in 10:30:23 format
+    return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
 }

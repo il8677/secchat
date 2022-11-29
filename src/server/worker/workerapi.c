@@ -163,7 +163,7 @@ int handle_client_request(struct worker_state* state) {
   assert(state);
 
   /* wait for incoming request, set eof if there are no more requests */
-  r = state->apifuncs.recv(&state->api, &msg);
+  r = state->apifuncs.recv(state, &msg);
   if (r == -1) {
     printf("server receive eof\n");
     state->eof = 1;
@@ -185,7 +185,7 @@ int handle_client_request(struct worker_state* state) {
   if (errcode < 0) {
     msg.type = ERR;
     msg.errcode = errcode;
-    state->apifuncs.send(&state->api, &msg);
+    state->apifuncs.send(state, &msg);
   } 
   /* clean up state associated with the message */
   api_recv_free(&msg);
@@ -276,7 +276,8 @@ int execute_request(struct worker_state* state,
   LOGIF("[execute_request] error: %d\n", res, res);
 
   if (doResponse) {
-    state->apifuncs.send(&state->api, &responseData);
+    API_PRINT_MSG("response", responseData);
+    state->apifuncs.send(state, &responseData);
   }
 
   return res;

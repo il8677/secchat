@@ -2,11 +2,12 @@
 #define ROUTE_H
 
 struct api_msg;
+struct worker_state;
 
 typedef struct www_route www_route;
 
 // Callback to a POST request, returns 1 for success, -1 for failure, takes in the body of the post, and a pointer to an API msg, and the length to copy
-typedef int(*post_cb_t)(const char* body, struct api_msg* state, unsigned short len);
+typedef int(*post_cb_t)(const char* body, unsigned short len, struct api_msg*, struct worker_state*);
 
 /// @brief Initializes a new GET www_route object
 /// @param path Path of the route

@@ -8,7 +8,7 @@
 void sendContentHeader(SSL* ssl, int fd, int length){
     static const char header[] = "HTTP/1.1 200 OK\nconnection: keep-alive\ncontent-length: %d\n\n";
 
-    char formatted[sizeof(header)+5];
+    char formatted[sizeof(header)+5]; // TODO: do this better
 
     sprintf(formatted, header, length);
 
