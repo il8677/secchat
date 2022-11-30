@@ -13,7 +13,7 @@ char* protwb_processKey(const char *str){
 
     // Concatanate the magic with the string
     char* buffer = malloc(concatLen + 1);
-    sprintf("%s%s", str, magic);
+    sprintf(buffer, "%s%s", str, magic);
 
     // Hash and b64
     unsigned char hashResult[SHA_DIGEST_LENGTH];
@@ -35,6 +35,16 @@ int protwb_send(struct worker_state* state, struct api_msg* msg){
     return 1;
 }
 
-int protwb_recv(struct worker_state* state, struct api_msg* msg){
+int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
+    struct api_state* state = &wstate->api;
+    char buf[2048];
+    int len;
+    memset(buf, 0, 2048);
+
+
+    len = ssl_block_read(state->ssl, state->fd, buf, sizeof(buf)-1); // Always leave null byte
+
+    printf("[websockets] %d: %s\n", len, (char*)buf);
+
     return 1;    
 }

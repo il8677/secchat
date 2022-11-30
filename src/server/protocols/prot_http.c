@@ -89,15 +89,13 @@ int protht_recv(struct worker_state* wstate, struct api_msg* msg){
 
     if(len <= 0) return -1;
 
-    printf("\n");
-
     // Parse header
     const char* method = strtok(buf, " ");
     const char* path = strtok(NULL, " ");
 
     printf("[web] Request len %d %s: %s\n", len, method, path);
 
-    char* websocket_code = strstr(buf, "Sec-WebSocket-Key: ");
+    char* websocket_code = strstr(strtok(NULL, ""), "Sec-WebSocket-Key: ");
     
     // Upgrade to websocket
     // TODO: Verify websocket request validity
@@ -112,10 +110,11 @@ int protht_recv(struct worker_state* wstate, struct api_msg* msg){
         char* code = protwb_processKey(websocket_code);
 
         // Send handshake
-        static const char* header = "http/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept:";
+        static const char* header = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ";
+        printf("[b64] %.*s  %ld\n", 28, code, strlen(code));
         ssl_block_write(state->ssl, state->fd, header, strlen(header));
-        ssl_block_write(state->ssl, state->fd, code, strlen(code));
-        ssl_block_write(state->ssl, state->fd, "\r\n", 2);
+        ssl_block_write(state->ssl, state->fd, code, 28); // 20 bytes encoded = 28 bytes
+        ssl_block_write(state->ssl, state->fd, "\r\n\r\n", 4);
 
         // Promote to websocket workerapi (Which can actually handle the app)
         wstate->apifuncs.recv = protwb_recv;

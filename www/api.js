@@ -179,7 +179,7 @@ function formatUnix(unix_timestamp){
     return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
 }
 
-document.addEventListener("load", () => {
+window.addEventListener("load", () => {
     // bad global variable! But I'm not sure how it should be properly done
     document.commSocket = createWebsocket();
     document.addEventListener("recievedMessage", (event) => {showMessage(event.detail, "messagebox");});
