@@ -6,6 +6,7 @@
 #include "../webserver/httputil.h"
 #include "../../../vendor/ssl-nonblock.h"
 #include "../worker/workerapi.h"
+#include "prot_webscockets.h"
 
 #include <openssl/ssl.h>
 
@@ -49,34 +50,6 @@ static char* api_msg_to_json(struct api_msg* msg){
     return json;
 }
 
-static int send_msg(struct api_state* state, struct api_msg* msg){
-    char* json = api_msg_to_json(msg);
-
-    char header[13];
-    sprintf(header, "%lu\r\n", strlen(json)+1);
-    
-    // TODO: Error handling
-    ssl_block_write(state->ssl, state->fd, header, strlen(header));
-    ssl_block_write(state->ssl, state->fd, json, strlen(json));
-    ssl_block_write(state->ssl, state->fd, ",\r\n", 3);
-
-    return 0;
-}
-
-static int poll_new_messages(const char* body, unsigned short len, struct api_msg* msg, struct worker_state* state){
-    // TODO: Check if locking is needed
-    static const char header[] = "HTTP/1.1 200 OK\nconnection: keep-alive\ncontent-type: application/json\ntransfer-encoding: chunked\n\n1\r\n[";
-    static const char trailer[] = "1\r\n]0\r\n";
-
-    ssl_block_write(state->api.ssl, state->api.fd, header, strlen(header));
-
-    db_get_messages(&state->dbConn, &state->api, state->uid, send_msg, &state->lastviewed);
-
-    ssl_block_write(state->api.ssl, state->api.fd, trailer, strlen(trailer));
-
-    return 1; // TODO: Error handling
-}
-
 int handle_get(struct api_state* state, const char* path) {
     char* contents = www_route_find(routes, path);
     if (contents == NULL) {
@@ -90,47 +63,9 @@ int handle_get(struct api_state* state, const char* path) {
     else return 1;
 }
 
-int handle_post(struct worker_state* wstate, char* buf, struct api_msg* msg, const char* path, int len){
-    struct api_state* state = &wstate->api;
-
-    post_cb_t cb = www_route_find_post(routes, path);
-    if (cb == NULL) {
-        send404(state->ssl, state->fd);
-        return 1;
-    }
-
-    char* remaining = strtok(NULL, "");
-    char* body = strstr(remaining, "\r\n\r\n") + 4;
-
-    unsigned short headerLen = body - buf;
-    unsigned short bodyLen = len - headerLen;
-
-    if (body == NULL) {
-        printf("[web] Error: recieved message could not find a body\n");
-        send400(state->ssl, state->fd);
-
-        return 1;
-    }
-
-    // Make sure the body could be an api_msg
-    if (bodyLen > sizeof(struct api_msg)) {
-    printf("[web] Error: Recieved message invalid. len %d expeceted %ld\n\tTotal len: %d headerlen: %d\n",
-        bodyLen, sizeof(struct api_msg), len, headerLen);
-
-    send400(state->ssl, state->fd);
-    return 1;
-    }
-
-    printf("[web: post] recieved api_msg len %u\n", bodyLen);
-
-    return cb(body, bodyLen, msg, wstate);
-}
-
 void protht_init(){
     if(routes == NULL){
         routes = www_route_init("/", "www/index.html");
-        www_route_post_initadd(routes, "/poll", poll_new_messages);
-        www_route_post_initadd(routes, "/postMessage", post_to_apimsg);
         www_route_initadd(routes, "/login.js", "www/login.js");
         www_route_initadd(routes, "/chat.js", "www/chat.js");
         www_route_initadd(routes, "/style.css", "www/style.css");
@@ -138,37 +73,23 @@ void protht_init(){
     }
 }
 
-int protht_notify(struct worker_state* n){
+int protht_notify(struct worker_state* n){ // HTTP should never notify
     return 0;
 }
 
-int protht_send(struct worker_state* wstate, struct api_msg* msg){
-    struct api_state* state = &wstate->api;
-
-    static const char header[] = "HTTP/1.1 200 OK\nconnection: keep-alive\ncontent-type: application/json\ncontent-length: %ld\n\n";
-
-    char formatted[sizeof(header) + 5]; // TODO: use httputil
-    char* msgjson = api_msg_to_json(msg);
-
-    sprintf(formatted, header, strlen(msgjson));
-
-    ssl_block_write(state->ssl, state->fd, formatted, strlen(formatted));
-    ssl_block_write(state->ssl, state->fd, msgjson, strlen(msgjson));
-
-    free(msgjson);
-
+int protht_send(struct worker_state* wstate, struct api_msg* msg){ // HTTP should never send
     return 1;
 }
 
 int protht_recv(struct worker_state* wstate, struct api_msg* msg){
     struct api_state* state = &wstate->api;
+    msg->type = NONE; // There is no message interpreted, it is just an HTTP request
 
     // Read message
     char buf[2048];
     int len;
     memset(buf, 0, 2048);
 
-    msg->type = NONE;
 
     len = ssl_block_read(state->ssl, state->fd, buf, sizeof(buf)-1); // Always leave null byte
 
@@ -182,10 +103,34 @@ int protht_recv(struct worker_state* wstate, struct api_msg* msg){
 
     printf("[web] Request len %d %s: %s\n", len, method, path);
 
-    if(strcmp(method, "GET") == 0){
+    char* websocket_code = strstr(buf, "Sec-WebSocket-Key: ") + strlen("Sec-WebSocket-Key: ");
+    
+    // Upgrade to websocket
+    if(websocket_code != NULL){ // TODO: Error checking
+        // Null terminate the code
+        strtok(websocket_code, "\r\n");
+        char* code = protwb_processKey(websocket_code);
+
+        printf("[web] Upgrading to websocket\n");
+
+        // Send handshake
+        static const char* header = "http/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept:";
+        ssl_block_write(state->ssl, state->fd, header, strlen(header));
+        ssl_block_write(state->ssl, state->fd, code, strlen(code));
+        ssl_block_write(state->ssl, state->fd, "\r\n", 2);
+
+        // Promote to websocket workerapi (Which can actually handle the app)
+        wstate->apifuncs.recv = protwb_recv;
+        wstate->apifuncs.send = protwb_send;
+        wstate->apifuncs.handle_notification = protwb_notify;
+
+        // Clean up
+        free(code);
+
+        return 1;
+    }
+    else if(strcmp(method, "GET") == 0){
         return handle_get(state, path);
-    }else if(strcmp(method, "POST") == 0){
-        return handle_post(wstate, buf, msg, path, len);
     }
 
     send404(state->ssl, state->fd);
