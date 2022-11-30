@@ -6,6 +6,7 @@
 
 // Globals
 
+// Events that other scripts can use to listen for events
 const e_loggedIn = new Event("loggedIn");
 
 const msgtype = {
@@ -35,7 +36,7 @@ function nullpad( str, len ) {
 }
 
 // Functions to format binary that represents api_msg, it was this or to parse JSON in C, so this felt like the lesser evil
-function getPrivMsg(timestamp, msg, to){
+function getPrivMsg(msg, to){
     // Length constraints
     msg = nullpad(str, MAX_MSG_LEN);
     from = nullpad("", MAX_USER_LEN);
@@ -53,7 +54,7 @@ function getPrivMsg(timestamp, msg, to){
     return b;
 }
 
-function getPubMsg(timestamp, msg){
+function getPubMsg(msg){
     msg = nullpad(str, MAX_MSG_LEN);
 
     const b = new Blob([
@@ -101,6 +102,23 @@ function getReg(username, password){
     return b;
 }
 
+function createWebsocket(){
+    // TODO: Not static URL
+    const ws = new WebSocket("wss://localhost");
+
+    ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        document.dispatchEvent(new CustomEvent("recievedMessage", {detail: msg}));
+    }
+
+    return ws;
+}
+
+function sendData(data){
+    document.commSocket.send(data);
+}
+
 function errcodeToString(errcode){
     switch(-errcode){
         case 1: return "Internal Server Error";
@@ -145,12 +163,6 @@ function showMessage(msg, outid){
     return false;
 }
 
-function processMessage(msg){
-    // TODO: use switch
-    if(msg.type == msgtype.LOGIN){
-    }
-}
-
 // Taken from https://stackoverflow.com/questions/847185/convert-a-unix-timestamp-to-time-in-javascript
 function formatUnix(unix_timestamp){
     // Create a new JavaScript Date object based on the timestamp
@@ -166,3 +178,9 @@ function formatUnix(unix_timestamp){
     // Will display time in 10:30:23 format
     return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
 }
+
+document.addEventListener("load", () => {
+    // bad global variable! But I'm not sure how it should be properly done
+    document.commSocket = createWebsocket();
+    document.addEventListener("recievedMessage", (event) => {showMessage(event.detail, "messagebox");});
+});

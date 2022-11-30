@@ -7,14 +7,7 @@ function submitForm(event){
     console.log(form.elements);
     const msg = type == "register" ? getReg(username, password) : getLogin(username, password);
 
-    var xmlHTTP = new XMLHttpRequest();
-    xmlHTTP.open("POST", "/postMessage", false);
-    xmlHTTP.onreadystatechange = () =>{
-        if(xmlHTTP.readyState == XMLHttpRequest.DONE){   
-            showMessage(JSON.parse(xmlHTTP.responseText), "messagebox");
-        }
-    }
-    xmlHTTP.send(msg);
+    sendData(msg);
 }
 
 window.addEventListener("load", () => {

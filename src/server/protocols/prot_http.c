@@ -6,20 +6,13 @@
 #include "../webserver/httputil.h"
 #include "../../../vendor/ssl-nonblock.h"
 #include "../worker/workerapi.h"
-#include "prot_webscockets.h"
+#include "prot_websockets.h"
 
 #include <openssl/ssl.h>
 
 www_route* routes = NULL;
 
-static int post_to_apimsg(const char* body, unsigned short len, struct api_msg* msg, struct worker_state* state){
-    // Copy the body to the msg. Theoretically this copy junk, but the rest of the system will manage safety.
-    memset(msg, 0, sizeof(struct api_msg));
-    memcpy(msg, body, len);
-
-    return 1;
-}
-
+/*
 static char* api_msg_to_json(struct api_msg* msg){
     // TODO: find a better way to be sure to allocate enough space for the json string
     char* json = malloc(50 + 10 + 10 + MAX_MSG_LEN + MAX_USER_LEN + MAX_USER_LEN);
@@ -49,6 +42,7 @@ static char* api_msg_to_json(struct api_msg* msg){
 
     return json;
 }
+*/
 
 int handle_get(struct api_state* state, const char* path) {
     char* contents = www_route_find(routes, path);
@@ -103,15 +97,19 @@ int protht_recv(struct worker_state* wstate, struct api_msg* msg){
 
     printf("[web] Request len %d %s: %s\n", len, method, path);
 
-    char* websocket_code = strstr(buf, "Sec-WebSocket-Key: ") + strlen("Sec-WebSocket-Key: ");
+    char* websocket_code = strstr(buf, "Sec-WebSocket-Key: ");
     
     // Upgrade to websocket
+    // TODO: Verify websocket request validity
     if(websocket_code != NULL){ // TODO: Error checking
-        // Null terminate the code
-        strtok(websocket_code, "\r\n");
-        char* code = protwb_processKey(websocket_code);
+        printf("[websocket] Upgrading to websocket\n");
+        // Move to the actual code
+        websocket_code += strlen("Sec-WebSocket-Key: ");
 
-        printf("[web] Upgrading to websocket\n");
+        // Null terminate the code
+        strstr(websocket_code, "\r\n")[0] = '\0';
+
+        char* code = protwb_processKey(websocket_code);
 
         // Send handshake
         static const char* header = "http/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept:";

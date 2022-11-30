@@ -1,5 +1,8 @@
 #include <string.h>
 #include <openssl/ssl.h>
+
+#include "../worker/workerapi.h"
+#include "../../../vendor/ssl-nonblock.h"
 #include "../../util/crypto.h"
 
 // I dont know who designed this process, but web sockets requires a transformation of a key to be certain that webscokets are supported
@@ -13,13 +16,25 @@ char* protwb_processKey(const char *str){
     sprintf("%s%s", str, magic);
 
     // Hash and b64
-    char* hashResult[SHA_DIGEST_LENGTH];
+    unsigned char hashResult[SHA_DIGEST_LENGTH];
     char* b64result;
 
-    hash(buffer, concatLen, hash);
+    hash(buffer, concatLen, hashResult);
     Base64Encode(hashResult, SHA_DIGEST_LENGTH, &b64result);
 
     free(buffer);
 
     return b64result;
+}
+
+int protwb_notify(struct worker_state* state){
+    return 0;
+}
+
+int protwb_send(struct worker_state* state, struct api_msg* msg){
+    return 1;
+}
+
+int protwb_recv(struct worker_state* state, struct api_msg* msg){
+    return 1;    
 }
