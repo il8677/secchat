@@ -4,7 +4,6 @@ function submitForm(event){
     const username = form.elements["username"].value;
     const password = form.elements["password"].value;
     const type = form.submitted;
-    console.log(form.elements);
     const msg = type == "register" ? getReg(username, password) : getLogin(username, password);
 
     sendData(msg);
