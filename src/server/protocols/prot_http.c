@@ -111,7 +111,6 @@ int protht_recv(struct worker_state* wstate, struct api_msg* msg){
 
         // Send handshake
         static const char* header = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ";
-        printf("[b64] %.*s  %ld\n", 28, code, strlen(code));
         ssl_block_write(state->ssl, state->fd, header, strlen(header));
         ssl_block_write(state->ssl, state->fd, code, 28); // 20 bytes encoded = 28 bytes
         ssl_block_write(state->ssl, state->fd, "\r\n\r\n", 4);
