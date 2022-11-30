@@ -268,8 +268,71 @@ static void usage(void) {
   exit(1);
 }
 
-static main(int argc, char **argv) {
-  int fd;
+// static X509 *certfromstr(const char *str) {
+//   /* this creates an OpenSSL I/O Stream (BIO) to read from a memory buffer */
+//   BIO *bio = BIO_new_mem_buf(str, strlen(str));
+
+//   /* parse PEM-formatted certificate from memory I/O stream */
+//   X509 *cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+//   BIO_free(bio);
+
+//   return cert;
+// }
+
+int verify_cert() {
+  const char ca_cert_str[] = "./ttpkeys/ca-cert.pem";
+  const char server_cert_str[] = "./serverkeys/cert.pem";
+  X509 *ca_cert, *server_cert;
+  EVP_PKEY *ca_pkey = NULL; 
+  EVP_PKEY *server_pkey = NULL;
+  int r1, r2;
+  
+  ERR_load_BIO_strings();
+  ERR_load_crypto_strings();
+
+  BIO *ca_certbio = BIO_new(BIO_s_file());
+  BIO *server_certbio = BIO_new(BIO_s_file());
+  BIO *outbio  = BIO_new_fp(stdout, BIO_NOCLOSE);
+  
+  BIO_read_filename(ca_certbio, ca_cert_str);
+  BIO_read_filename(server_certbio, server_cert_str);
+  
+  //loading CA certificate and extra CA pubkey
+  if (! (ca_cert = PEM_read_bio_X509(ca_certbio, NULL, 0, NULL))) {
+    BIO_printf(outbio, "Error loading ca_cert into memory\n");
+    exit(-1);
+  }
+  if ((ca_pkey = X509_get_pubkey(ca_cert)) == NULL)
+    BIO_printf(outbio, "Error getting public key from CA certificate");
+
+  //verify CA, but idk if this is necessary
+  r1 = X509_verify(ca_cert, ca_pkey);
+  printf("certificate is %scorrectly signed by CA\n", (r1 == 1) ? "" : "not ");
+
+  //loading server sertificate and server pubkey
+  if (! (server_cert = PEM_read_bio_X509(server_certbio, NULL, 0, NULL))) {
+    BIO_printf(outbio, "Error loading server_cert into memory\n");
+    exit(-1);
+  }
+  if ((server_pkey = X509_get_pubkey(server_cert)) == NULL)
+    BIO_printf(outbio, "Error getting public key from server certificate");
+
+  //verify server
+  r2 = X509_verify(server_cert, ca_pkey);
+  printf("server signature is %s\n", (r2 == 1) ? "good" : "bad");
+
+  EVP_PKEY_free(ca_pkey);
+  X509_free(ca_cert);
+  X509_free(server_cert);
+  BIO_free_all(ca_certbio);
+  BIO_free_all(outbio);
+  BIO_free_all(server_certbio);
+  
+  return r1+r2;
+}
+
+int main(int argc, char **argv) {
+  int fd, r;
   uint16_t port;
   struct client_state state;
 
@@ -285,9 +348,24 @@ static main(int argc, char **argv) {
   if (fd < 0) return 1;
 
   /* initialize API */
-  api_state_init(&state.api, fd);
+  // TODO: Verify server certificate
+  r = verify_cert();
+  if (r != 2) printf("Verification of server failed\n.");
+  
+  api_state_init(&state.api, fd, TLS_client_method());
+  set_nonblock(fd);
 
-  /* TODO any additional client initialization */
+  int res;
+  // SSL handshake
+  if((res = ssl_block_connect(state.api.ssl, state.api.fd)) != 1){
+    printf("Fatal error %d\n", res=SSL_get_error(state.api.ssl, res));
+    
+    if(res == SSL_ERROR_SSL){
+        printf("\t(%s)\n", ERR_error_string(ERR_get_error(), NULL));
+    }
+    
+    return 1;
+  }
 
   /* client things */
   while (!state.eof && handle_incoming(&state) == 0);
