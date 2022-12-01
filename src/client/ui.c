@@ -143,7 +143,6 @@ int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout) {
 
   crypto_get_user_auth(username, password, &apimsg->encPrivKey, &apimsg->cert);
   char* enc = crypto_aes_encrypt(apimsg->encPrivKey, strlen(apimsg->encPrivKey)+1, password, 1, &apimsg->encPrivKeyLen);
-  printf("AES encrypted %d\n", apimsg->encPrivKeyLen);
   free(apimsg->encPrivKey);
   apimsg->encPrivKey= enc;
 

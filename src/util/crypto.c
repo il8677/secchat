@@ -56,9 +56,9 @@ char* crypto_aes_encrypt(char* bytes, uint16_t byteslen, const char* password, c
 
     EVP_CipherInit(ctx, type, key, iv, encrypt);
     EVP_CipherUpdate(ctx, (unsigned char*)output, &outputLen, (unsigned char*)bytes, byteslen);
-    *outLen+= outputLen;
+    *outLen += outputLen;
     EVP_CipherFinal(ctx, (unsigned char*)output+outputLen, &outputLen);
-    *outLen+= outputLen;
+    *outLen += outputLen;
 
     free(key);
     free(iv);
