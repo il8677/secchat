@@ -49,12 +49,14 @@ void db_create(struct db_state* state){
     sql_exec(state->db, "PRAGMA journal_mode = WAL;", NULL, NULL);
 
     // Create user DB
+    // Private key is aes encrypted so it's a blob (it might contain null bytes)
+    // The cert is just a plaintext so we can deal with it as a string
     sql_exec(state->db, 
     "CREATE TABLE IF NOT EXISTS users ( \
         id INTEGER PRIMARY KEY AUTOINCREMENT, \
         username VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL UNIQUE, \
         password BLOB(" STR(SHA_DIGEST_LENGTH) ") NOT NULL,\
-        privkey VARCHAR("STR(MAX_PRIVKEY)") NOT NULL, \
+        privkey BLOB("STR(MAX_PRIVKEY)") NOT NULL, \
         cert VARCHAR("STR(MAX_CERT)") NOT NULL);", 
     NULL, NULL);
 
@@ -186,14 +188,15 @@ int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* user
     int retvalue = ERR_SQL;
     if(id < 0) return id;
 
-    char* query = sqlite3_mprintf("SELECT privkey FROM users WHERE id=%d;", id);
+    char* query = sqlite3_mprintf("SELECT privkey, LENGTH(privkey) FROM users WHERE id=%d;", id);
     sqlite3_stmt* statement;
 
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, ERR_SQL, retvalue);
 
     if(sqlite3_step(statement) == SQLITE_ROW){
-        msg->encPrivKey = strdup((const char*)sqlite3_column_text(statement, 0));
-        msg->encPrivKeyLen = strlen(msg->encPrivKey);
+        msg->encPrivKeyLen = sqlite3_column_int(statement, 1);
+        msg->encPrivKey = malloc(msg->encPrivKeyLen);
+        memcpy(msg->encPrivKey, sqlite3_column_blob(statement, 0), msg->encPrivKeyLen);
     }
     
     cleanup:
@@ -216,7 +219,7 @@ int db_add_cert(struct db_state* state, struct api_msg* msg, const char* usernam
 
     if(sqlite3_step(statement) == SQLITE_ROW){
         msg->cert = strdup((const char*)sqlite3_column_text(statement, 0));
-        msg->certLen = strlen(msg->cert);
+        msg->certLen = strlen(msg->cert)+1;
     }
     
     cleanup:
@@ -270,15 +273,32 @@ int db_state_init(struct db_state* state){
 int db_register(struct db_state* state, const struct api_msg* msg){
     if(msg->type != REG) return ERR_INVALID_API_MSG;
     if(msg->encPrivKey == NULL || msg->cert == NULL) return ERR_INVALID_API_MSG;
+    
+    char* query = sqlite3_mprintf("INSERT INTO users (username, password, privkey, cert) VALUES(%Q, %Q, @privkey, %Q);", msg->reg.username, msg->reg.password, msg->cert);
 
-    char* query = sqlite3_mprintf("INSERT INTO users (username, password, privkey, cert) VALUES(%Q, %Q, %Q, %Q);", msg->reg.username, msg->reg.password, msg->encPrivKey, msg->cert);
+    sqlite3_stmt* stmt;
 
-    int res = sql_exec(state->db, query, NULL, NULL);
+    int res; 
+    
+    SQL_CALL(sqlite3_prepare_v2(state->db, query, -1, &stmt, NULL), state->db, ERR_SQL, res);
+    SQL_CALL(sqlite3_bind_blob(stmt, 1, msg->encPrivKey, msg->encPrivKeyLen, NULL), state->db, ERR_SQL, res);
+
+    res = sqlite3_step(stmt);
+
+    if(res != SQLITE_DONE) {
+        res = ERR_SQL;
+        goto cleanup;
+    }
+
+    res = SQLITE_OK;
 
     if(res == SQLITE_CONSTRAINT_UNIQUE) res = ERR_USERNAME_EXISTS;
     else if(res != SQLITE_OK) res = ERR_SQL;
     else res = nametoid(state, msg->reg.username);
 
+
+    cleanup:
+    sqlite3_finalize(stmt);
     sqlite3_free(query);
 
     return res;

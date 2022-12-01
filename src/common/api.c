@@ -38,7 +38,7 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
     res = ssl_block_read(state->ssl, state->fd, msg->cert, msg->certLen);
     if(res <= 0) return -1;
   }
-
+  // TODO: Verify api_msg here
   return 1;
 }
 
@@ -78,10 +78,10 @@ int api_send(struct api_state* state, struct api_msg* msg){
   }
   
   // Send additional data
-  if(msg->encPrivKeyLen){
-    res = ssl_block_write(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
+  if(msg->certLen){
+    res = ssl_block_write(state->ssl, state->fd, msg->cert, msg->certLen);
     if(res <= 1) return -1;
-  }
+  } 
 
   return 1;
 }

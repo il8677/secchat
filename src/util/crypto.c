@@ -37,10 +37,14 @@ static uint8_t* makeBuffer(const char* str, size_t len){
     return buf;
 }
 
-char* crypto_aes_encrypt(char* str, const char* password, char encrypt){
+// This function is a mess, but it encrypts the input using the users password
+char* crypto_aes_encrypt(char* bytes, uint16_t byteslen, const char* password, char encrypt, uint16_t* outLen){
+    *outLen = 0;
+
     // 16 bytes / block, round up to find number of blocks, * 16 for final byttes;
-    int outputLen = (strlen(str)/16 + 1)*16;
-    char* output = malloc(outputLen);
+    int outputLen = (byteslen/16 + 1)*16;
+    char* output = malloc(outputLen);    
+
     memset(output, 0, outputLen);
     
     const EVP_CIPHER* type = EVP_aes_128_cbc();
@@ -51,8 +55,10 @@ char* crypto_aes_encrypt(char* str, const char* password, char encrypt){
     uint8_t* iv = makeBuffer(password, EVP_CIPHER_iv_length(type));
 
     EVP_CipherInit(ctx, type, key, iv, encrypt);
-    EVP_CipherUpdate(ctx, (unsigned char*)output, &outputLen, (unsigned char*)str, strlen(str));
-    EVP_CipherFinal(ctx, (unsigned char*)output, &outputLen);
+    EVP_CipherUpdate(ctx, (unsigned char*)output, &outputLen, (unsigned char*)bytes, byteslen);
+    *outLen+= outputLen;
+    EVP_CipherFinal(ctx, (unsigned char*)output+outputLen, &outputLen);
+    *outLen+= outputLen;
 
     free(key);
     free(iv);
@@ -72,3 +78,21 @@ void crypto_get_user_auth(const char* name, const char* password, char** outPriv
     read_file("clientkeys/priv.pem", outPrivkey);
 }
 
+// Taken from the provided examples
+X509* crypto_parse_x509_string(const char* x509str){
+    BIO* bio = BIO_new_mem_buf(x509str, strlen(x509str));
+
+    X509* cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    BIO_free(bio);
+
+    return cert;
+}
+
+RSA* crypto_parse_RSA_priv_string(const char* rsapriv){
+    BIO* bio = BIO_new_mem_buf(rsapriv, strlen(rsapriv));
+
+    RSA* key = PEM_read_bio_RSAPrivateKey(bio, NULL, NULL, NULL);
+    BIO_free(bio);
+
+    return key;
+}

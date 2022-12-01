@@ -98,7 +98,7 @@ int input_handle_users(struct api_msg* apimsg, char* p) {
   return 0;
 }
 
-int input_handle_login(struct api_msg* apimsg, char* p) {
+int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout) {
   char *username = strtok(NULL, " ");
   if (username == NULL) return ERR_NAME_INVALID;
 
@@ -109,6 +109,10 @@ int input_handle_login(struct api_msg* apimsg, char* p) {
   if (tok != NULL) return ERR_INVALID_NR_ARGS;
 
   if (strlen(username)+1 > MAX_USER_LEN) return ERR_USERNAME_TOOLONG;
+
+  // Store the password
+  free(*passwordout);
+  *passwordout = strdup(password); 
 
   apimsg->type = LOGIN;
   strncpy(apimsg->login.username, username, MAX_USER_LEN);
@@ -117,7 +121,7 @@ int input_handle_login(struct api_msg* apimsg, char* p) {
   return 0;
 }
 
-int input_handle_register(struct api_msg* apimsg, char* p) {
+int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout) {
   char *username = strtok(NULL, " ");
   if (username == NULL) return ERR_NAME_INVALID;
   
@@ -129,16 +133,20 @@ int input_handle_register(struct api_msg* apimsg, char* p) {
   char* tok = strtok(NULL, " ");
   if (tok != NULL) return ERR_INVALID_NR_ARGS;
   
+  // Store the password
+  free(*passwordout);
+  *passwordout = strdup(password);
+
   apimsg->type = REG;
   strncpy(apimsg->reg.username, username, MAX_USER_LEN);
   crypto_hash(password, strlen(password), (unsigned char*)apimsg->login.password);
 
   crypto_get_user_auth(username, password, &apimsg->encPrivKey, &apimsg->cert);
-  char* enc = crypto_aes_encrypt(apimsg->encPrivKey, password, 1);
+  char* enc = crypto_aes_encrypt(apimsg->encPrivKey, strlen(apimsg->encPrivKey)+1, password, 1, &apimsg->encPrivKeyLen);
+  printf("AES encrypted %d\n", apimsg->encPrivKeyLen);
   free(apimsg->encPrivKey);
   apimsg->encPrivKey= enc;
 
-  apimsg->encPrivKeyLen = strlen(apimsg->encPrivKey) + 1;
   apimsg->certLen = strlen(apimsg->cert) + 1;
 
   return 0;

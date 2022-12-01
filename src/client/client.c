@@ -9,6 +9,7 @@
 #include <ctype.h>
 
 #include "../common/api.h"
+#include "../util/crypto.h"
 #include "ui.h"
 #include "../util/util.h"
 #include "../common/errcodes.h"
@@ -21,6 +22,11 @@ struct client_state {
   struct api_state api;
   int eof;
   struct ui_state ui;
+
+  char* password; // The password entered by the user (needed for privkey decryption)
+
+  X509* cert;
+  RSA* privkey;
 };
 
 /**
@@ -82,8 +88,8 @@ static int client_process_command(struct client_state* state) {
       char* cmd = strtok(p, " ");
       if (strcmp(cmd, "exit") == 0) { errcode = input_handle_exit(&apimsg, p); state->eof = 1;}
       else if (strcmp(cmd, "users") == 0) errcode = input_handle_users(&apimsg, p);
-      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p);
-      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p);
+      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p, &state->password);
+      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p, &state->password);
       else errcode = ERR_COMMAND_ERROR;
     }
   }
@@ -181,6 +187,38 @@ static void pubMsg(const struct api_msg * msg){
 static void who(const struct api_msg * msg){
   printf("users:\n%s\n", msg->who.users);
 }
+
+static void loginAck(const struct api_msg* msg, struct client_state* state){
+  // If we already have a key, something has gone wrong
+  if(state->cert != NULL || state->privkey != NULL) return;
+  // If the message doesn't have a key-pair, something has gone wring
+  if(msg->certLen == 0 || msg->encPrivKeyLen == 0) return;
+
+  if(state->password == NULL) return;
+
+  // TODO: Verify cert with privkey
+  state->cert = crypto_parse_x509_string(msg->cert);
+
+  uint16_t outlen;
+  char* unencrpyted = crypto_aes_encrypt(msg->encPrivKey, msg->encPrivKeyLen, state->password, 0, &outlen);
+  
+  state->privkey = crypto_parse_RSA_priv_string(unencrpyted);
+  free(unencrpyted);
+
+  // DEBUG: Save recieved keys
+  BIO* bio = BIO_new_file("clientkeys/d_recv_privkey.pem", "w");
+  if(bio){
+    PEM_write_bio_RSAPrivateKey(bio, state->privkey, NULL, NULL, 0, NULL, NULL);
+    BIO_free(bio);
+  }
+
+  bio = BIO_new_file("clientkeys/d_recv_cert.pem", "w");
+  if(bio){
+    PEM_write_bio_X509(bio, state->cert);
+    BIO_free(bio);
+  }
+}
+
 /**
  * @brief         Handles a message coming from server (i.e, worker)
  * @param state   Initialized client state
@@ -206,6 +244,11 @@ static int execute_request(
       break;
     case WHO:
       who(msg);
+      break;
+    case LOGINACK: 
+      // Login acks have a status
+      status(msg);
+      loginAck(msg, state);
       break;
     default:
       printf("Some error happened %d\n", msg->type);
@@ -301,6 +344,9 @@ static void client_state_free(struct client_state* state) {
 
   /* cleanup UI state */
   ui_state_free(&state->ui);
+
+  free(state->cert);
+  free(state->privkey);
 }
 
 static void usage(void) {

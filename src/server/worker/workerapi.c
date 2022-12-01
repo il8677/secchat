@@ -241,12 +241,15 @@ int execute_request(struct worker_state* state,
       res = db_login(&state->dbConn, msg);
 
       if(res >= 0){
-        responseData.type = STATUS;
+        responseData.type = LOGINACK;
         strcpy(responseData.status.statusmsg, "authentication succeeded");
 
         doResponse = 1;
 
         setUser(state, res, msg->login.username);
+        // Add the users key pair to the acknowledgement
+        db_add_cert(&state->dbConn, &responseData, msg->login.username);
+        db_add_privkey(&state->dbConn, &responseData, msg->login.username);
       } 
       break;
     case REG: 
@@ -258,12 +261,16 @@ int execute_request(struct worker_state* state,
       res = db_register(&state->dbConn, msg);
 
       if(res >= 0){ 
-        responseData.type = STATUS;
+        responseData.type = LOGINACK;
         strcpy(responseData.status.statusmsg, "registration succeeded");
         
         doResponse = 1;
 
         setUser(state, res, msg->reg.username);
+
+        // Add the users key pair to the acknowledgement
+        db_add_cert(&state->dbConn, &responseData, msg->reg.username);
+        db_add_privkey(&state->dbConn, &responseData, msg->reg.username);
       }
       break; 
     case EXIT:
