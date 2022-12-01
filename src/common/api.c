@@ -30,18 +30,17 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
     msg->encPrivKey = malloc(msg->encPrivKeyLen);
     res = ssl_block_read(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
     if(res <= 0) return -1;
-
-    if(res != msg->certLen) return -1; // Recieved wrong length, malformed packet = drop peer
+    if(res != msg->encPrivKeyLen) return -1; // Recieved wrong length, malformed packet = drop peer
   }
 
   if(msg->certLen){
     msg->cert = malloc(msg->certLen);
     res = ssl_block_read(state->ssl, state->fd, msg->cert, msg->certLen);
     if(res <= 0) return -1;
+    if(res != msg->certLen) return -1; // Recieved wrong length, malformed packet = drop peer
+    
     // Null terminate so we can treat as string safely
     msg->cert[msg->certLen] = '\0';
-
-    if(res != msg->certLen) return -1; // Recieved wrong length, malformed packet = drop peer
   }
   return 1;
 }
