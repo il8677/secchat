@@ -1,16 +1,14 @@
 #ifndef _LINKEDLIST_H_
 #define _LINKEDLIST_H_
 
-typedef struct node node;
+typedef struct Node Node;
 
-void list_add(node* head, char* name, char* data, uint16_t datalen);
+Node* list_init();
+void list_free(Node* head);
 
-void list_del(node* head, char*name);
+void list_add(Node* head, char* key, char* data, uint16_t datalen);
+void list_del(Node* head, char*key);
 
-node* list_init();
-
-void list_free(node* head);
-
-node* list_exist(node* head, char* name);
+Node* list_exist(Node* head, char* key);
 
 #endif

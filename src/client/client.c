@@ -24,8 +24,8 @@ struct client_state {
   int eof;
   struct ui_state ui;
   
-  struct node* head_certs;
-  struct node* head_msg_queue;
+  struct Node* head_certs;
+  struct Node* head_msg_queue;
 
   char* password; // The password entered by the user (needed for privkey decryption)
 

@@ -6,14 +6,15 @@
 
 #include "linkedList.h"
 
-struct node {
-    node* next;
-    char* name;
+struct Node {
+    Node* next;
+
+    char* key;
     char contents[];
 };
 
-void list_free(node* head) {
-    node* temp = head;
+void list_free(Node* head) {
+    Node* temp = head;
     while (head->next != NULL) {
         head = head->next;
         free(temp);
@@ -22,9 +23,9 @@ void list_free(node* head) {
     free(head);
 }
 
-void list_add(node* head, char* name, char* data, uint16_t datalen) {
-    struct node *node = (struct node *) malloc (sizeof(struct node));
-    node->name = name;
+void list_add(Node* head, char* key, char* data, uint16_t datalen) {
+    struct Node *node = (struct Node *) malloc (sizeof(struct Node));
+    node->key = key;
     node->next = NULL;
     memcpy(node->contents, data, datalen);
     
@@ -32,10 +33,10 @@ void list_add(node* head, char* name, char* data, uint16_t datalen) {
     head->next = node;
 }
 
-void list_del(node* head, char*name) {
+void list_del(Node* head, char*key) {
     while(head->next != NULL){
-        if(head->next.name == name) {
-            node* temp;
+        if(head->next.key == key) {
+            Node* temp;
             temp = head->next;
             head->next = head->next.next;
             free(temp);
@@ -45,16 +46,16 @@ void list_del(node* head, char*name) {
     }
 }
 
-node* list_init() {
-    struct node* node = (struct node *) malloc (sizeof(struct node));
-    node->name = NULL;
+Node* list_init() {
+    struct Node* node = (struct Node *) malloc (sizeof(struct Node));
+    node->key = NULL;
     node->next = NULL;
     return node;
 }
 
-node* list_exist(node* head, char* name) {
+Node* list_exist(Node* head, char* key) {
     while(head->next != NULL){
-        if(head->name == name) return head;
+        if(head->key == key) return head;
         head = head->next;
     }
     return NULL;
