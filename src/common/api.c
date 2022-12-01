@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string.h>
 
+
 #include <unistd.h>
 
 #include "api.h"
@@ -97,6 +98,7 @@ void api_state_free(struct api_state* state) {
   // Clean up SSL
   SSL_free(state->ssl);
   SSL_CTX_free(state->ctx);
+  
   assert(state);
 }
 
@@ -117,6 +119,6 @@ void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method) {
   
   state->ctx = SSL_CTX_new(method);
   state->ssl = SSL_new(state->ctx);
-  
+
   SSL_set_fd(state->ssl,  fd);
 }

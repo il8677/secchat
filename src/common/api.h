@@ -33,7 +33,7 @@
   #define API_PRINT_MSG(msg, apimsg)
 #endif
 
-enum msg_type_t {NONE, ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, LOGINACK, EXIT };
+enum msg_type_t {NONE, ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, LOGINACK, EXIT, KEY };
 
 typedef signed long timestamp_t;
 
@@ -70,6 +70,12 @@ struct api_msg {
     struct {
       char users[MAX_MSG_LEN];
     } who;
+
+    struct {
+      //TODO: the actual type of a key
+      char *key;
+      char *owner;
+    } key;
 
     struct {
       char username[MAX_USER_LEN];

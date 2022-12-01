@@ -14,6 +14,7 @@
 #include "../util/util.h"
 #include "../common/errcodes.h"
 #include "../../vendor/ssl-nonblock.h"
+#include "linkedlist.h"
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -22,6 +23,8 @@ struct client_state {
   struct api_state api;
   int eof;
   struct ui_state ui;
+  struct node* headkey;
+  struct node* headtrans;
 
   char* password; // The password entered by the user (needed for privkey decryption)
 
@@ -80,7 +83,7 @@ static int client_process_command(struct client_state* state) {
   char *p_end = input + strlen(input);
   while (p < p_end && isspace(*p)) p++;
   
-  if (p[0] == '@') errcode = input_handle_privmsg(&apimsg, p);
+  if (p[0] == '@') errcode = input_handle_privmsg(state, &apimsg, p);
   else if (p[0] == '/') {                      
     p++;
     if (strlen(p) == 0 || p[0] == ' ') errcode = ERR_COMMAND_ERROR;
@@ -187,6 +190,13 @@ static void pubMsg(const struct api_msg * msg){
 static void who(const struct api_msg * msg){
   printf("users:\n%s\n", msg->who.users);
 }
+static void handle_key(struct client_state* state, const struct api_msg * msg){
+  list_add(state->headkey, msg->key.owner, msg->key.key, sizeof(msg->key.key));
+  
+  //verify the certificate 
+  //place key in list
+  //look at the queue
+}
 
 static void loginAck(const struct api_msg* msg, struct client_state* state){
   // If we already have a key, something has gone wrong
@@ -239,6 +249,9 @@ static int execute_request(
       // Login acks have a status
       status(msg);
       loginAck(msg, state);
+      break;
+    case KEY:
+      handle_key(state, msg);  
       break;
     default:
       printf("Some error happened %d\n", msg->type);
@@ -325,6 +338,9 @@ static int client_state_init(struct client_state* state) {
   /* initialize UI */
   ui_state_init(&state->ui);
 
+  //initialize linked lists
+  state->headkey = list_init();
+  state->headtrans = list_init();
 
   return 0;
 }
@@ -341,6 +357,11 @@ static void client_state_free(struct client_state* state) {
   RSA_free(state->privkey);
 
   free(state->password);
+
+  // Clean up linked lists
+  list_free(state->headkey); // TODO: need &? :)
+  list_free(state->headtrans);
+
 }
 
 static void usage(void) {
@@ -354,6 +375,7 @@ int main(int argc, char **argv) {
   uint16_t port;
   struct client_state state;
 
+
   /* check arguments */
   if (argc != 3) usage();
   if (parse_port(argv[2], &port) != 0) usage();
@@ -366,8 +388,10 @@ int main(int argc, char **argv) {
   if (fd < 0) return 1;
 
   /* initialize API */
-  // TODO: Verify server certificate
   api_state_init(&state.api, fd, TLS_client_method());
+  // verify server certificate
+  SSL_CTX_load_verify_locations(state.api.ctx, "ttpkeys/ca-cert.pem", NULL);
+  SSL_set_verify(state.api.ssl, SSL_VERIFY_PEER, NULL);
   set_nonblock(fd);
 
   int res;
