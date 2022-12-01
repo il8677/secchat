@@ -337,8 +337,9 @@ static void client_state_free(struct client_state* state) {
   /* cleanup UI state */
   ui_state_free(&state->ui);
 
-  free(state->cert);
-  free(state->privkey);
+  X509_free(state->cert);
+  RSA_free(state->privkey);
+
   free(state->password);
 }
 
