@@ -13,7 +13,6 @@
 #include "../util/util.h"
 #include "../common/errcodes.h"
 #include "../../vendor/ssl-nonblock.h"
-#include "linkedList.h"
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -22,8 +21,6 @@ struct client_state {
   struct api_state api;
   int eof;
   struct ui_state ui;
-  struct node* headkey;
-  struct node* headtrans;
 };
 
 /**
@@ -294,9 +291,6 @@ static int client_state_init(struct client_state* state) {
   /* clear state, invalidate file descriptors */
   memset(state, 0, sizeof(*state));
 
-  state->headkey = list_init();
-  state->headtrans = list_init();
-
   /* initialize UI */
   ui_state_init(&state->ui);
 
@@ -312,8 +306,6 @@ static void client_state_free(struct client_state* state) {
   /* cleanup UI state */
   ui_state_free(&state->ui);
 
-  list_free(state->headkey); // TODO: need &? :)
-  list_free(state->headtrans);
 }
 
 static void usage(void) {

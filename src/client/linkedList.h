@@ -11,4 +11,6 @@ node* list_init();
 
 void list_free(node* head);
 
+node* list_exist(node* head, char* name);
+
 #endif

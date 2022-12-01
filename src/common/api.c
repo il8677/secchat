@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "api.h"
+#include "linkedList.h"
 #include "../../vendor/ssl-nonblock.h"
 
 /**
@@ -49,19 +50,32 @@ int api_send(struct api_state* state, struct api_msg* msg){
   assert(msg);
   
   if(msg->type == PRIV_MSG){
-    struct api_msg encrypted_msg_rec;
-    struct api_msg encrypted_msg_sender;
-
+    struct api_msg* encrypted_msg_rec = (api_msg*)malloc sizeof(struct api_msg);
+    struct api_msg* encrypted_msg_sender = (api_msg*)malloc sizeof(struct api_msg);
     int len = strlen(msg->priv_msg.msg);
+  	struct node* keynode = list_exist(state->headkey, msg->priv_msg.to);
+    if ( keynode == NULL) {
+      list_add(state->headtrans, msg->priv_msg.to, msg ,len); //prob doesnt work but the data should be the msg no?
+      return;
+    }
+    
+    // TODO:: stop with trolling
+    encrypted_msg_rec->priv_msg.to = msg->priv_msg.to;
+    encrypted_msg_rec->priv_msg.from = msg->priv_msg.from;
+    encrypted_msg_rec->priv_msg.timestamp = msg->priv_msg.timestamp;
+
+    encrypted_msg_sender->priv_msg.to = msg->priv_msg.to;
+    encrypted_msg_sender->priv_msg.from = msg->priv_msg.from;
+    encrypted_msg_sender->priv_msg.timestamp = msg->priv_msg.timestamp;
+
+
     //if not in keylist add request to list return
     // if(len > MAX_MSG_LEN){
     //   return -1;
     // }
-    while(!msg->priv_msg.to.key){
-
-    }
-    RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_rec.priv_msg.msg, , RSA_PKCS1_OAEP_PADDING);
-    RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_sender.priv_msg.msg, , RSA_PKCS1_OAEP_PADDING);
+    
+    RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_rec.priv_msg.msg, keynode->contents , RSA_PKCS1_OAEP_PADDING);
+    RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_sender.priv_msg.msg, keynode->contents, RSA_PKCS1_OAEP_PADDING);
   }
   int res = ssl_block_write(state->ssl, state->fd, msg, sizeof(struct api_msg));
 
@@ -78,6 +92,10 @@ void api_state_free(struct api_state* state) {
   // Clean up SSL
   SSL_free(state->ssl);
   SSL_CTX_free(state->ctx);
+
+  // Clean up linked lists
+  list_free(state->headkey); // TODO: need &? :)
+  list_free(state->headtrans);
   assert(state);
 }
 
@@ -99,5 +117,9 @@ void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method) {
   state->ctx = SSL_CTX_new(method);
   state->ssl = SSL_new(state->ctx);
   
+  //initialize linked lists
+  state->headkey = list_init();
+  state->headtrans = list_init();
+
   SSL_set_fd(state->ssl,  fd);
 }
