@@ -13,6 +13,7 @@
 #include "../util/util.h"
 #include "../common/errcodes.h"
 #include "../../vendor/ssl-nonblock.h"
+#include "linkedlist.h"
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -21,6 +22,8 @@ struct client_state {
   struct api_state api;
   int eof;
   struct ui_state ui;
+  struct node* headkey;
+  struct node* headtrans;
 };
 
 /**
@@ -73,7 +76,7 @@ static int client_process_command(struct client_state* state) {
   char *p_end = input + strlen(input);
   while (p < p_end && isspace(*p)) p++;
   
-  if (p[0] == '@') errcode = input_handle_privmsg(&apimsg, p);
+  if (p[0] == '@') errcode = input_handle_privmsg(state, &apimsg, p);
   else if (p[0] == '/') {                      
     p++;
     if (strlen(p) == 0 || p[0] == ' ') errcode = ERR_COMMAND_ERROR;
@@ -179,7 +182,7 @@ static void who(const struct api_msg * msg){
   printf("users:\n%s\n", msg->who.users);
 }
 static void handle_key(struct client_state* state, const struct api_msg * msg){
-  list_add(state->ui.headkey, msg->key.owner, msg->key.key, sizeof(msg->key.key));
+  list_add(state->headkey, msg->key.owner, msg->key.key, sizeof(msg->key.key));
   
   //verify the certificate 
   //place key in list
@@ -296,6 +299,9 @@ static int client_state_init(struct client_state* state) {
   /* initialize UI */
   ui_state_init(&state->ui);
 
+  //initialize linked lists
+  state->headkey = list_init();
+  state->headtrans = list_init();
 
   return 0;
 }
@@ -307,6 +313,10 @@ static void client_state_free(struct client_state* state) {
 
   /* cleanup UI state */
   ui_state_free(&state->ui);
+
+  // Clean up linked lists
+  list_free(state->headkey); // TODO: need &? :)
+  list_free(state->headtrans);
 
 }
 

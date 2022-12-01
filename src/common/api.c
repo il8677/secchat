@@ -63,7 +63,7 @@ void api_state_free(struct api_state* state) {
   // Clean up SSL
   SSL_free(state->ssl);
   SSL_CTX_free(state->ctx);
-
+  
   assert(state);
 }
 
