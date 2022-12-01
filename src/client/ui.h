@@ -3,8 +3,11 @@
 #define _UI_H_
 
 #include "../common/api.h"
+#include "linkedlist.h"
 
 struct ui_state {
+    struct node* headkey;
+    struct node* headtrans;
 };
 
 void ui_state_free(struct ui_state* state);

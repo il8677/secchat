@@ -178,7 +178,9 @@ static void pubMsg(const struct api_msg * msg){
 static void who(const struct api_msg * msg){
   printf("users:\n%s\n", msg->who.users);
 }
-static void key(const struct api_msg * msg){
+static void handle_key(struct client_state* state, const struct api_msg * msg){
+  list_add(state->ui.headkey, msg->key.owner, msg->key.key, sizeof(msg->key.key));
+  
   //verify the certificate 
   //place key in list
   //look at the queue
@@ -210,7 +212,7 @@ static int execute_request(
       who(msg);
       break;
     case KEY:
-      key(msg);  
+      handle_key(state, msg);  
     default:
       printf("Some error happened %d\n", msg->type);
       break;

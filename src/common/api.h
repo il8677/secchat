@@ -69,7 +69,9 @@ struct api_msg {
     } who;
 
     struct {
-      //RSA key;
+      //TODO: the actual type of a key
+      char *key;
+      char *owner;
     } key;
 
     struct {

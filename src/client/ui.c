@@ -16,6 +16,10 @@
  */
 void ui_state_free(struct ui_state* state) {
   assert(state);
+
+    // Clean up linked lists
+  list_free(state->headkey); // TODO: need &? :)
+  list_free(state->headtrans);
 }
 
 /**
@@ -24,6 +28,10 @@ void ui_state_free(struct ui_state* state) {
  */
 void ui_state_init(struct ui_state* state) {
   assert(state);
+
+    //initialize linked lists
+  state->headkey = list_init();
+  state->headtrans = list_init();
 }
 
 /**
@@ -60,7 +68,38 @@ int message_too_long(char* msg) {
   return strlen(msg)+1 > MAX_MSG_LEN;  
 }
 
-int input_handle_privmsg(struct api_msg* apimsg, char* p) {
+int privmsg_encrypt(struct client_state* state, struct api_msg* msg){
+    if(msg->type == PRIV_MSG){
+    struct api_msg* encrypted_msg_rec = (api_msg*)malloc sizeof(struct api_msg);
+    struct api_msg* encrypted_msg_sender = (api_msg*)malloc sizeof(struct api_msg);
+    int len = strlen(msg->priv_msg.msg);
+  	struct node* keynode = list_exist(state->headkey, msg->priv_msg.to);
+    if ( keynode == NULL) {
+      list_add(state->headtrans, msg->priv_msg.to, msg ,len); //prob doesnt work but the data should be the msg no?
+      return;
+    }
+    
+    // TODO:: stop with trolling
+    encrypted_msg_rec->priv_msg.to = msg->priv_msg.to;
+    encrypted_msg_rec->priv_msg.from = msg->priv_msg.from;
+    encrypted_msg_rec->priv_msg.timestamp = msg->priv_msg.timestamp;
+
+    encrypted_msg_sender->priv_msg.to = msg->priv_msg.to;
+    encrypted_msg_sender->priv_msg.from = msg->priv_msg.from;
+    encrypted_msg_sender->priv_msg.timestamp = msg->priv_msg.timestamp;
+
+
+    //if not in keylist add request to list return
+    // if(len > MAX_MSG_LEN){
+    //   return -1;
+    // }
+    
+    RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_rec.priv_msg.msg, keynode->contents , RSA_PKCS1_OAEP_PADDING);
+    RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_sender.priv_msg.msg, keynode->contents, RSA_PKCS1_OAEP_PADDING);
+  }
+}
+
+int input_handle_privmsg(struct client_state* state, struct api_msg* apimsg, char* p) {
   p++;
 
   if (p[0] == ' ') return ERR_NAME_INVALID;
@@ -77,8 +116,10 @@ int input_handle_privmsg(struct api_msg* apimsg, char* p) {
   strncpy(apimsg->priv_msg.to, to, MAX_USER_LEN);
   strncpy(apimsg->priv_msg.msg, msg, MAX_MSG_LEN); 
 
+  privmsg_encrypt(state, apimsg);
   return 0;
 }
+
 
 int input_handle_exit(struct api_msg* apimsg, char* p) {
   char* tok = strtok(NULL, " ");
