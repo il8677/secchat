@@ -23,6 +23,7 @@ struct client_state {
   struct api_state api;
   int eof;
   struct ui_state ui;
+  
   struct node* head_certs;
   struct node* head_msg_queue;
 
