@@ -267,6 +267,8 @@ static int execute_request(
  */
 static int handle_server_request(struct client_state* state) {
   struct api_msg msg;
+  api_msg_init(&msg);
+
   int r, success = 1;
 
   assert(state);
