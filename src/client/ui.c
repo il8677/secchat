@@ -69,9 +69,9 @@ int privmsg_encrypt(struct client_state* state, struct api_msg* msg){
   struct api_msg encrypted_msg_sender;
     
   int len = strlen(msg->priv_msg.msg);
-  struct node* keynode = list_exist(state->headkey, msg->priv_msg.to);
+  struct node* keynode = list_exist(state->head_certs, msg->priv_msg.to);
   if ( keynode == NULL) {
-    list_add(state->headtrans, msg->priv_msg.to, msg ,len); //prob doesnt work but the data should be the msg no?
+    list_add(state->head_msg_queue, msg->priv_msg.to, msg ,len); //prob doesnt work but the data should be the msg no?
     return;
   }
    
