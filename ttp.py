@@ -9,20 +9,20 @@ clientdir = "clientkeys"
 
 def generateKeyPair(dir):
     # Generate priv key
-    os.system(f"openssl genrsa -out {dir}/priv.pem")
+    os.system(f"openssl genrsa -out {dir}/priv.pem 2> /dev/null")
     
     # Generate public key
-    os.system(f"openssl rsa -pubout -in {dir}/priv.pem -out {dir}/pub.pem")
+    os.system(f"openssl rsa -pubout -in {dir}/priv.pem -out {dir}/pub.pem 2> /dev/null")
 
 def generateCA():
-    os.system(f"openssl req -new -x509 -key {ttpdir}/priv.pem -out {ttpdir}/ca-cert.pem -nodes -subj '/CN=ca\.ttp\.com'")
+    os.system(f"openssl req -new -x509 -key {ttpdir}/priv.pem -out {ttpdir}/ca-cert.pem -nodes -subj '/CN=ca\.ttp\.com' 2> /dev/null")
 
 def generateCert(dir, name):
     # Generate request
-    os.system(f"openssl req -new -key {dir}/priv.pem -out {dir}/csr.pem -nodes -subj '/CN={name}\.secchat\.com'")
+    os.system(f"openssl req -new -key {dir}/priv.pem -out {dir}/csr.pem -nodes -subj '/CN={name}\.secchat\.com' 2> /dev/null")
     
     # CA signs
-    os.system(f"openssl x509 -req -CA {ttpdir}/ca-cert.pem -CAkey {ttpdir}/priv.pem -CAcreateserial -in {dir}/csr.pem -out {dir}/cert.pem")
+    os.system(f"openssl x509 -req -CA {ttpdir}/ca-cert.pem -CAkey {ttpdir}/priv.pem -CAcreateserial -in {dir}/csr.pem -out {dir}/cert.pem 2> /dev/null")
 
 
 if __name__ == "__main__":
