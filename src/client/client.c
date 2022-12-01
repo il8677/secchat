@@ -323,8 +323,10 @@ int main(int argc, char **argv) {
   if (fd < 0) return 1;
 
   /* initialize API */
-  // TODO: Verify server certificate
   api_state_init(&state.api, fd, TLS_client_method());
+  // verify server certificate
+  SSL_CTX_load_verify_locations(state.api.ctx, "ttpkeys/ca-cert.pem", NULL);
+  SSL_set_verify(state.api.ssl, SSL_VERIFY_PEER, NULL);
   set_nonblock(fd);
 
   int res;
