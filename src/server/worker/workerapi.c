@@ -127,6 +127,7 @@ int worker_state_init(struct worker_state* state, int connfd,
 
   /* set up API state */
   api_state_init(&state->api, connfd, TLS_server_method());
+  printf("SSL PTR: %p\n", state->api.ssl);
 
   state->uid = -1;
 
@@ -158,6 +159,7 @@ void worker_state_free(struct worker_state* state) {
 
 int handle_client_request(struct worker_state* state) {
   struct api_msg msg;
+  api_msg_init(&msg);
   int r, errcode = 0;
 
   assert(state);
@@ -167,12 +169,16 @@ int handle_client_request(struct worker_state* state) {
   if (r == -1) {
     printf("server receive eof\n");
     state->eof = 1;
+    api_msg_free(&msg);
     return 0;
   }
 
   API_PRINT_MSG("recv", msg);
 
-  if(msg.type==NONE) return 0;
+  if(msg.type==NONE) {
+    api_msg_free(&msg);
+    return 0;
+  }
 
   /* execute request */
   if ((errcode = verify_request(state, &msg)) == 1) {
