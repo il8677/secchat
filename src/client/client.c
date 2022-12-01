@@ -66,6 +66,7 @@ static int client_process_command(struct client_state* state) {
   if(input == NULL) return -1; // STDIN Closed
 
   struct api_msg apimsg;
+  api_msg_init(&apimsg);
   int errcode = 0;
 
   //remove whitespace at the start of the input 
@@ -106,10 +107,12 @@ static int client_process_command(struct client_state* state) {
       case ERR_PASSWORD_TOOLONG: printf("Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
       case ERR_INVALID_NR_ARGS:  printf("Invalid number of arguments given.\n"); break;
     }
+    api_msg_free(&apimsg);
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying
   }
 
   api_send(&(state->api), &apimsg);
+  api_msg_free(&apimsg);
   return 0;
 }
   
@@ -239,7 +242,7 @@ static int handle_server_request(struct client_state* state) {
   }
 
   /* clean up state associated with the message */
-  api_recv_free(&msg);
+  api_msg_free(&msg);
   return success ? 0 : -1;
 }
 

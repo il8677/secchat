@@ -20,22 +20,42 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
 
   int res = ssl_block_read(state->ssl, state->fd, msg, sizeof(struct api_msg));
 
-  if(res > 0){
-    return 1;
-  }else{
-    return -1;
+  if(res <= 0) return -1;
+
+  msg->encPrivKey = NULL;
+  msg->cert = NULL;
+
+  // Recieve additional data
+  if(msg->encPrivKeyLen){ // TODO: Security, this could allocate an arbitrary amount of data. Not good!
+    msg->encPrivKey = malloc(msg->encPrivKeyLen);
+    res = ssl_block_read(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
+    if(res <= 0) return -1;
+
   }
 
-  return -1;
+  if(msg->certLen){
+    msg->cert = malloc(msg->certLen);
+    res = ssl_block_read(state->ssl, state->fd, msg->cert, msg->certLen);
+    if(res <= 0) return -1;
+  }
+
+  return 1;
+}
+
+void api_msg_init(struct api_msg* msg){
+  memset(msg, 0, sizeof(struct api_msg));
 }
 
 /**
  * @brief         Clean up information stored in @msg
  * @param msg     Information about message to be cleaned up
  */
-void api_recv_free(struct api_msg* msg) {
+void api_msg_free(struct api_msg* msg) {
 
   assert(msg);
+
+  if(msg->encPrivKey) free(msg->encPrivKey);
+  if(msg->cert) free(msg->cert);
 }
 
 /// @brief Sends msg over the wire
@@ -50,7 +70,19 @@ int api_send(struct api_state* state, struct api_msg* msg){
   int res = ssl_block_write(state->ssl, state->fd, msg, sizeof(struct api_msg));
 
   if(res <= 1) return -1;
+
+  // Send additional data
+  if(msg->encPrivKeyLen){
+    res = ssl_block_write(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
+    if(res <= 1) return -1;
+  }
   
+  // Send additional data
+  if(msg->encPrivKeyLen){
+    res = ssl_block_write(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
+    if(res <= 1) return -1;
+  }
+
   return 1;
 }
 

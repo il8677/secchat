@@ -53,7 +53,9 @@ void db_create(struct db_state* state){
     "CREATE TABLE IF NOT EXISTS users ( \
         id INTEGER PRIMARY KEY AUTOINCREMENT, \
         username VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL UNIQUE, \
-        password BLOB(" STR(SHA_DIGEST_LENGTH) ") NOT NULL);", 
+        password BLOB(" STR(SHA_DIGEST_LENGTH) ") NOT NULL,\
+        privkey VARCHAR("STR(MAX_PRIVKEY)") NOT NULL, \
+        cert VARCHAR("STR(MAX_CERT)") NOT NULL);", 
     NULL, NULL);
 
     // Create message db
@@ -88,6 +90,8 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
     while(res == SQLITE_ROW){
         // Create api_msg to represent the row
         struct api_msg row;
+        api_msg_init(&row);
+
         *lastviewed = sqlite3_column_int64(statement, 0);
         
         // These do NOT have to be freed (they are freed by finalize)
@@ -119,6 +123,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
 
         if((retvalue = cb(astate, &row))) goto cleanup;
 
+        api_msg_free(&row);
         res = sqlite3_step(statement);
     }
 
@@ -176,6 +181,51 @@ int verify_login(struct db_state* state, const char* username, const char* passw
 
 }
 
+int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* username){
+    int id = nametoid(state, username);
+    int retvalue = ERR_SQL;
+    if(id < 0) return id;
+
+    char* query = sqlite3_mprintf("SELECT privkey FROM users WHERE id=%d;", id);
+    sqlite3_stmt* statement;
+
+    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, ERR_SQL, retvalue);
+
+    if(sqlite3_step(statement) == SQLITE_ROW){
+        msg->encPrivKey = strdup((const char*)sqlite3_column_text(statement, 0));
+        msg->encPrivKeyLen = strlen(msg->encPrivKey);
+    }
+    
+    cleanup:
+    sqlite3_finalize(statement);
+    sqlite3_free(query);
+
+    return retvalue;
+}
+
+
+int db_add_cert(struct db_state* state, struct api_msg* msg, const char* username){
+    int id = nametoid(state, username);
+    int retvalue = ERR_SQL;
+    if(id < 0) return id;
+
+    char* query = sqlite3_mprintf("SELECT cert FROM users WHERE id=%d;", id);
+    sqlite3_stmt* statement;
+
+    SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, ERR_SQL, retvalue);
+
+    if(sqlite3_step(statement) == SQLITE_ROW){
+        msg->cert = strdup((const char*)sqlite3_column_text(statement, 0));
+        msg->certLen = strlen(msg->cert);
+    }
+    
+    cleanup:
+    sqlite3_finalize(statement);
+    sqlite3_free(query);
+
+    return retvalue;
+}
+
 int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
     char* query = NULL;
 
@@ -219,8 +269,9 @@ int db_state_init(struct db_state* state){
 
 int db_register(struct db_state* state, const struct api_msg* msg){
     if(msg->type != REG) return ERR_INVALID_API_MSG;
+    if(msg->encPrivKey == NULL || msg->cert == NULL) return ERR_INVALID_API_MSG;
 
-    char* query = sqlite3_mprintf("INSERT INTO users (username, password) VALUES(%Q, %Q);", msg->reg.username, msg->reg.password);
+    char* query = sqlite3_mprintf("INSERT INTO users (username, password, privkey, cert) VALUES(%Q, %Q, %Q, %Q);", msg->reg.username, msg->reg.password, msg->encPrivKey, msg->cert);
 
     int res = sql_exec(state->db, query, NULL, NULL);
 

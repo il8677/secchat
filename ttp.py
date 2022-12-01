@@ -28,7 +28,9 @@ def generateCert(dir, name):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="ttp", description="generates keys")
 
-    parser.add_argument("action")
+    parser.add_argument("-s", required=False, action="store_true")
+    parser.add_argument("-ca", required=False, action="store_true")
+    parser.add_argument("-c", required=False)
     args = parser.parse_args()
     
     def createDir(dir):
@@ -39,9 +41,12 @@ if __name__ == "__main__":
     createDir(serverdir)
     createDir(clientdir)
 
-    if args.action == "server":
+    if args.s:
         generateKeyPair(serverdir)
         generateCert(serverdir, "server")
-    elif args.action == "ttp":
+    elif args.ca:
         generateKeyPair(ttpdir)
         generateCA()
+    elif args.c:
+        generateKeyPair(clientdir)
+        generateCert(clientdir, args.c)

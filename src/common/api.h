@@ -11,6 +11,9 @@
 #define MAX_USER_LEN_M1 9
 #define MAX_MSG_LEN_M1 159
 
+#define MAX_PRIVKEY 2048
+#define MAX_CERT 2048
+
 #define MAX_CONNECTIONS 16
 
 #define API_DEBUG
@@ -30,7 +33,7 @@
   #define API_PRINT_MSG(msg, apimsg)
 #endif
 
-enum msg_type_t {NONE, ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, EXIT };
+enum msg_type_t {NONE, ERR, STATUS, PRIV_MSG, PUB_MSG, WHO, LOGIN, REG, LOGINACK, EXIT };
 
 typedef signed long timestamp_t;
 
@@ -75,12 +78,26 @@ struct api_msg {
 
     struct {
       char username[MAX_USER_LEN];
-      char password[SHA_DIGEST_LENGTH];  
+      char password[SHA_DIGEST_LENGTH];
     } reg;
 
     struct {
     } exit;
   };
+
+  // The following are information about extra data that should be transmitted.
+  // These weren't implemented as static fields since the length is indeterminate
+  // and it's pretty wasteful to have ~3KB of overhead when you don't always need it
+  // So these "trailers" are sent/recieved after the api_msg is sent/recieved.
+
+  // Length of attached data (if any)
+  uint16_t encPrivKeyLen;
+  uint16_t certLen;
+  
+  // Only should be used locally since pointers are meaningless over the wire
+  // Should be sent so the other side can recieve and set these fields
+  char* encPrivKey;
+  char* cert;
 };
 
 struct api_state {
@@ -91,7 +108,8 @@ struct api_state {
 };
 
 int api_recv(struct api_state* state, struct api_msg* msg);
-void api_recv_free(struct api_msg* msg);
+void api_msg_init(struct api_msg* msg);
+void api_msg_free(struct api_msg* msg);
 int api_send(struct api_state* state, struct api_msg* msg);
 
 void api_state_free(struct api_state* state);

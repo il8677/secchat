@@ -188,7 +188,7 @@ int handle_client_request(struct worker_state* state) {
     state->apifuncs.send(&state->api, &msg);
   } 
   /* clean up state associated with the message */
-  api_recv_free(&msg);
+  api_msg_free(&msg);
 
   return errcode < 0;
 }
@@ -200,6 +200,7 @@ int execute_request(struct worker_state* state,
   int doResponse = 0;
 
   struct api_msg responseData;
+  api_msg_init(&responseData);
 
   switch (msg->type) {
     case PRIV_MSG:
@@ -278,6 +279,7 @@ int execute_request(struct worker_state* state,
   if (doResponse) {
     state->apifuncs.send(&state->api, &responseData);
   }
+  api_msg_free(&responseData);
 
   return res;
 }
