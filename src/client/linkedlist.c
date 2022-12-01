@@ -51,3 +51,10 @@ node* list_init() {
     node->next = NULL;
     return node;
 }
+node* list_exist(node* head, char* name) {
+    while(head->next != null){
+        if(head->name == name) return head;
+        head = head->next
+    }
+    return NULL;
+}
