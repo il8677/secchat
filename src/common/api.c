@@ -5,7 +5,6 @@
 #include <unistd.h>
 
 #include "api.h"
-#include "linkedList.h"
 #include "../../vendor/ssl-nonblock.h"
 
 /**
