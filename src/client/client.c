@@ -207,19 +207,6 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
 
   state->privkey = crypto_parse_RSA_priv_string(unencrpyted);
   free(unencrpyted);
-
-  // DEBUG: Save recieved keys
-  BIO* bio = BIO_new_file("clientkeys/d_recv_privkey.pem", "w");
-  if(bio){
-    PEM_write_bio_RSAPrivateKey(bio, state->privkey, NULL, NULL, 0, NULL, NULL);
-    BIO_free(bio);
-  }
-
-  bio = BIO_new_file("clientkeys/d_recv_cert.pem", "w");
-  if(bio){
-    PEM_write_bio_X509(bio, state->cert);
-    BIO_free(bio);
-  }
 }
 
 /**
