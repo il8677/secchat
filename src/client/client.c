@@ -178,6 +178,11 @@ static void pubMsg(const struct api_msg * msg){
 static void who(const struct api_msg * msg){
   printf("users:\n%s\n", msg->who.users);
 }
+static void key(const struct api_msg * msg){
+  //verify the certificate 
+  //place key in list
+  //look at the queue
+}
 /**
  * @brief         Handles a message coming from server (i.e, worker)
  * @param state   Initialized client state
@@ -204,6 +209,8 @@ static int execute_request(
     case WHO:
       who(msg);
       break;
+    case KEY:
+      key(msg);  
     default:
       printf("Some error happened %d\n", msg->type);
       break;

@@ -69,6 +69,10 @@ struct api_msg {
     } who;
 
     struct {
+      RSA key;
+    }
+
+    struct {
       char username[MAX_USER_LEN];
       char password[SHA_DIGEST_LENGTH];
     } login;
