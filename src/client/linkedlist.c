@@ -51,3 +51,8 @@ node* list_init() {
     node->next = NULL;
     return node;
 }
+char* list_exist(node* head, char* name) {
+    while(head->next != null){
+        if(head->name == name) return true;
+    }
+}
