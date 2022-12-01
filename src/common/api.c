@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string.h>
 
+
 #include <unistd.h>
 
 #include "api.h"
@@ -47,10 +48,11 @@ int api_send(struct api_state* state, struct api_msg* msg){
   assert(state);
   assert(msg);
   
-  if(msg->type == msg->priv_msg){
-    struct api_msg encrypted_msg_rec = msg;
-    struct api_msg encrypted_msg_sender = msg;
-    int len = strlen(encrypted_msg_rec.priv_msg.msg);
+  if(msg->type == PRIV_MSG){
+    struct api_msg encrypted_msg_rec;
+    struct api_msg encrypted_msg_sender;
+
+    int len = strlen(msg->priv_msg.msg);
     //if not in keylist add request to list return
     // if(len > MAX_MSG_LEN){
     //   return -1;
