@@ -285,15 +285,8 @@ int db_register(struct db_state* state, const struct api_msg* msg){
 
     res = sqlite3_step(stmt);
 
-    if(res != SQLITE_DONE) {
-        res = ERR_SQL;
-        goto cleanup;
-    }
-
-    res = SQLITE_OK;
-
     if(res == SQLITE_CONSTRAINT_UNIQUE) res = ERR_USERNAME_EXISTS;
-    else if(res != SQLITE_OK) res = ERR_SQL;
+    else if(res != SQLITE_DONE) res = ERR_SQL;
     else res = nametoid(state, msg->reg.username);
 
 
