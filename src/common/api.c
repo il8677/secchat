@@ -48,21 +48,13 @@ int api_send(struct api_state* state, struct api_msg* msg){
   assert(state);
   assert(msg);
   
-  if(msg->type == PRIV_MSG){
-    struct api_msg encrypted_msg_rec;
-    struct api_msg encrypted_msg_sender;
+  // if(msg->type == PRIV_MSG){
 
-    int len = strlen(msg->priv_msg.msg);
-    //if not in keylist add request to list return
-    // if(len > MAX_MSG_LEN){
-    //   return -1;
-    // }
-    while(!msg->priv_msg.to.key){
-
-    }
-    RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_rec.priv_msg.msg, , RSA_PKCS1_OAEP_PADDING);
-    RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_sender.priv_msg.msg, , RSA_PKCS1_OAEP_PADDING);
-  }
+  //   int len = strlen(msg->priv_msg.msg);
+    
+  //   RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_rec.priv_msg.msg, , RSA_PKCS1_OAEP_PADDING);
+  //   RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_sender.priv_msg.msg, , RSA_PKCS1_OAEP_PADDING);
+  // }
   int res = ssl_block_write(state->ssl, state->fd, msg, sizeof(struct api_msg));
 
   if(res <= 1) return -1;
