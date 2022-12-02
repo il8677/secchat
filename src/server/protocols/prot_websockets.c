@@ -1,6 +1,7 @@
 #include <string.h>
 #include <openssl/ssl.h>
 #include <arpa/inet.h>
+#include <endian.h>
 
 #include "../worker/workerapi.h"
 #include "../../../vendor/ssl-nonblock.h"
@@ -73,7 +74,7 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
     struct api_state* state = &wstate->api;
     msg->type = NONE; // There might not be a message
 
-    uint8_t buf[2048];
+    uint8_t buf[8196];
     int len;
     memset(buf, 0, 2048);
 
@@ -81,17 +82,11 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
 
     if(len <= 0) return -1;
 
-    printf("[websockets] %d: ", len);
-    for(int i = 0; i < len; i++){
-        printf("%x", buf[i]);
-    }
-
-    printf("\n");
-
+    // Get header values
     uint8_t fin = buf[0] >> 7;
     uint8_t opcode = buf[0] & 0x0f;
     uint8_t mask = buf[1] >> 7;
-    uint8_t len1 = buf[1] & 0x80;
+    uint8_t len1 = buf[1] & 0x7F;
 
     uint64_t payloadLen = len1;
 
@@ -104,10 +99,10 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
 
     // Read the appropriate length
     if(len1 == 126){
-        payloadLen = *(uint16_t*)data;
+        payloadLen = htons(*(uint16_t*)data);
         data += 2;
     }else if (len1 == 127){
-        payloadLen = *(uint64_t*)data;
+        payloadLen = be64toh(*(uint64_t*)data);
         data += 8;
     }
 
@@ -116,21 +111,22 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
         return -1;
     }
 
+    printf("Payload %ld\n", payloadLen);
+
     // Unmask data
     if(mask){
-        uint8_t* maskData = &mask;
+        uint8_t* maskData = data;
         data += 4;
 
         for(uint64_t i = 0; i < payloadLen; i++){
-            buf[i] ^= maskData[i%4];
-            printf("%x", buf[i]); 
+            data[i] ^= maskData[i%4];
         }
-        printf("\n");
     }else{
-        printf("[websockets] Recieved unmassked message, the RFC tells me to exit\n");
+        printf("[websockets] Recieved unmasked message, the RFC tells me to exit\n");
         return -1;
     }
 
+    // Dispatch data
     switch (opcode)
     {
     case 0x9: // Ping
