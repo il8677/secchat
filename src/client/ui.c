@@ -191,7 +191,7 @@ int input_handle_pubmsg(RSA* key, struct api_msg* apimsg, char* p) {
   
   apimsg->type = PUB_MSG;
   strncpy(apimsg->pub_msg.msg, p_start, MAX_MSG_LEN);
-  //TODO: if hashing is already being done then this is zombiecode
+  //TODO: if hashing is already being done then this is zombie code
   // crypto_hash(apimsg->pub_msg.msg,strlen(apimsg->pub_msg.msg), (unsigned char*)apimsg->pub_msg.hash);
   // printf("HASH:%s\n", apimsg->pub_msg.hash);
   crypto_RSA_sign(key, apimsg->pub_msg.hash, strlen(apimsg->pub_msg.hash), (unsigned char*)apimsg->pub_msg.hash); 

@@ -13,7 +13,7 @@ char* crypto_aes_encrypt(char* bytes, uint16_t bytesLen, const char* password, c
 /// @param name The name of the user
 /// @param outPrivKey The place to put the encrypted PEM of the private key
 /// @param outCert The place to put the PEM of the cert
-void crypto_get_user_auth(const char* name, const char* password, char** outPrivKey, char** outCert);
+void crypto_get_user_auth(const char* name, char** outPrivKey, char** outCert);
 
 /// @brief Parses string to produce X509 cert
 X509* crypto_parse_x509_string(const char* x509str);

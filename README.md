@@ -1,6 +1,28 @@
 # walkthrough
+
+## client initialization 
+
 ## parsing input
-The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct within the api_message. If the message is too long or the command is invalid we give an error and ask them to try again. The structs are then sent to the socket.
+The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct within the api_message. If the message is too long, the command is invalid or the amount of arguments is invalid we give an error and ask them to try again. Depending on the command a handler function is then called. (client_process_command, client.c)
+
+## preparing message
+Depending on the command different steps are taken.
+
+-   ### register    TODO: do we use salt?
+    When register is called we first check if the username has already been taken or not and if the password and/or the username is valid (not empty). We then hash the password, request a certificate from the CA and generate a private key. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. 
+
+-   ### login       TODO: salt? verify that the private key is actually correct w certificate?
+    After login is called we hash the password and send it with the username to the server. If the the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and verify the certificate with the key. 
+    
+-   ### public message
+
+-   ### private message
+
+-   ### users
+
+-   ### exit
+
+ The structs are then sent to the socket.
 
 ## server and worker
 The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify the request. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track with a block of shared memory, which the workers accesses when building the response to a /users command.

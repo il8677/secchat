@@ -70,7 +70,7 @@ char* crypto_aes_encrypt(char* bytes, uint16_t byteslen, const char* password, c
     return output;
 }
 
-void crypto_get_user_auth(const char* name, const char* password, char** outPrivkey, char** outCert){
+void crypto_get_user_auth(const char* name, char** outPrivkey, char** outCert){
     // Go get info from the TTP
     char command[1024] = "python3 ttp.py -c ";
     strcat(command, name);
