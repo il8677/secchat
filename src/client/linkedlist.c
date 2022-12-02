@@ -6,41 +6,51 @@
 
 #include "linkedList.h"
 
-struct Node {
-    Node* next;
-
-    char* key;
-    char contents[];
-};
-
 void list_free(Node* head) {
-    Node* temp = head;
+    Node* last = head;
     while (head->next != NULL) {
         head = head->next;
-        free(temp);
-        temp = head;
+        free(last);
+        last = head;
     }
     free(head);
 }
 
-void list_add(Node* head, char* key, char* data, uint16_t datalen) {
-    struct Node *node = (struct Node *) malloc (sizeof(struct Node));
-    node->key = key;
+void list_add(Node* head, const char* key, void* data, uint16_t datalen) {
+    struct Node *node = malloc(sizeof(struct Node)+datalen);
+    strcpy(node->key, key);
     node->next = NULL;
     memcpy(node->contents, data, datalen);
     
-    while(head->next != NULL) head = head->next;
+    while(head->next != NULL) {
+        if(strcmp(key, head->key) == 0) return; // Don't insert something that already exists
+        head = head->next;
+    }
     head->next = node;
 }
 
-void list_del(Node* head, char*key) {
+void list_del(Node* head, const char* key) {
     while(head->next != NULL){
-        if(head->next.key == key) {
+        if(strcmp(head->next->key, key) == 0) {
             Node* temp;
             temp = head->next;
-            head->next = head->next.next;
+            head->next = head->next->next;
             free(temp);
-            break;
+        }
+        head = head->next;
+    }
+}
+
+void list_exec(Node* head, const char* key, list_cb_t cb, void* userData, char doDelete){
+    while(head->next != NULL){
+        if(strcmp(head->next->key, key) == 0) {
+            cb(head->next, userData);
+            if(doDelete){
+                Node* temp;
+                temp = head->next;
+                head->next = head->next->next;
+                free(temp);
+            }
         }
         head = head->next;
     }
@@ -53,7 +63,7 @@ Node* list_init() {
     return node;
 }
 
-Node* list_exist(Node* head, char* key) {
+Node* list_find(Node* head, const char* key) {
     while(head->next != NULL){
         if(head->key == key) return head;
         head = head->next;

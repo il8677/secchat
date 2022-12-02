@@ -57,7 +57,7 @@ linkedlist.o: src/client/linkedlist.c src/client/linkedlist.h
 worker.o: src/server/worker/worker.c src/util/util.h src/server/worker/worker.h src/server/db.h src/server/worker/workerapi.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-client: sslnonblock.o client.o api.o ui.o util.o crypto.o
+client: sslnonblock.o client.o api.o ui.o util.o crypto.o linkedlist.o
 
 server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o
 
