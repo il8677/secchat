@@ -11,22 +11,6 @@
 
 #define LOGIF(x, y, ...)if(y<0) printf(x, __VA_ARGS__);
 
-/// @brief Checks if a string has a null byte
-/// @param str the string to check
-/// @param len the length of a string
-/// @return 1 if so, 0 otherwise
-static int check_null_byte(const char* str, uint32_t len) {
-  int hasNullByte = 0;
-  for (int i = len - 1; i >= 0; i++) {
-    if (str[i] == '\0') {
-      hasNullByte = 1;
-      break;
-    }
-  }
-
-  return hasNullByte;
-}
-
 /// @brief Checks if the client is logged in
 /// @param state worker state
 /// @return 1 if logged in, 0 otherwise
@@ -51,32 +35,6 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
   int res;
 
   if (!(res = authenticate_request(state, msg))) return res;
-
-  // Type check
-  switch (msg->type) {
-    case PRIV_MSG:
-      if (!check_null_byte(msg->priv_msg.to, MAX_USER_LEN))
-        return ERR_INVALID_API_MSG;
-    case PUB_MSG:
-      if (!check_null_byte(msg->priv_msg.msg, MAX_MSG_LEN))
-        return ERR_INVALID_API_MSG;
-      // We dont use from so we dont need to check it
-    case LOGIN:
-    case REG:
-      if (!check_null_byte(msg->reg.username, MAX_USER_LEN))
-        return ERR_INVALID_API_MSG;
-      break;
-
-    case EXIT:
-    case WHO:
-      break;
-
-    case ERR:     // Client cannot send err!
-    case STATUS:  // Client cannot send status!
-    default:
-      return ERR_INVALID_API_MSG;
-      break;
-  }
 
   // User must be logged in unless they're trying to exit or login
   if (msg->type != LOGIN && msg->type != EXIT && msg->type != REG) {
