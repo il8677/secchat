@@ -99,7 +99,6 @@ static int client_process_command(struct client_state* state) {
   }
   else {
     errcode = input_handle_pubmsg(state->privkey, &apimsg, p);
-    //to test signing and verifying
   }
   
   if (errcode == ERR_COMMAND_ERROR){
@@ -186,16 +185,17 @@ static void privMsg(struct client_state* state, const struct api_msg * msg){
   free(unencrpyted);
 }
 
-static void pubMsg(struct client_state* state, const struct api_msg * msg){
+static void pubMsg(const struct api_msg * msg){
   char buffer[26];
-  char messagebuf[500];
-  char hashbuf[500];
-  unsigned char* msgbuf = (unsigned char*)&messagebuf;
+  char messagebuf[MAX_MSG_LEN];
+  char sigbuf[MAX_ENCRYPT_LEN];  
+
   strcpy(messagebuf, msg->pub_msg.msg);
-  strcpy(hashbuf, msg->pub_msg.hash);
+  strcpy(sigbuf, msg->pub_msg.signature);
+
   formatTime(buffer, 26, msg->priv_msg.timestamp);
 
-  crypto_RSA_verify(state->cert, hashbuf, strlen(msg->pub_msg.hash), msgbuf, strlen(msg->pub_msg.msg)); 
+  crypto_RSA_verify(msg->pub_msg.cert, (unsigned char*)sigbuf, strlen(sigbuf), messagebuf, strlen(messagebuf)); 
 
   //never print more than the respective maximum lengths.
   printf("%s %s: %s\n", buffer,
@@ -281,7 +281,7 @@ static int execute_request(
       privMsg(state, msg);
       break;
     case PUB_MSG:
-      pubMsg(state, msg);
+      pubMsg(msg);
       break;
     case WHO:
       who(msg);

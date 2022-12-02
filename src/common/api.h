@@ -71,10 +71,11 @@ struct api_msg {
       
       char msg[MAX_MSG_LEN];
 
-      X509* cert;
+      char signature[MAX_ENCRYPT_LEN];
 
-      char hash[MAX_ENCRYPT_LEN];
-      
+      //TODO: are we storing it here?
+      //X509 cert;
+
     } pub_msg;
 
     struct {

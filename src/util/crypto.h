@@ -28,6 +28,6 @@ char* crypto_RSA_privkey_decrypt(RSA* key, const char* msg);
 
 void crypto_RSA_sign(RSA* key, const char* msg, uint16_t msglen, unsigned char* output);
 
-int crypto_RSA_verify(X509* key, const char* msg, uint16_t msglen, unsigned char* hashmsg, uint16_t hashmsglen);
+int crypto_RSA_verify(X509* key, unsigned char* msg, uint16_t msglen, char* hashmsg, uint16_t hashmsglen);
 
 #endif
