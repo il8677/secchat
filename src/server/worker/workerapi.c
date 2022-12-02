@@ -44,7 +44,6 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
   return 1;
 }
 
-
 /**
  * @brief         Notifies server that the worker received a new message
  *                from the client.
@@ -166,6 +165,16 @@ int execute_request(struct worker_state* state,
   api_msg_init(&responseData);
 
   switch (msg->type) {
+    case KEY:
+      res = db_add_cert(&state->dbConn, &responseData, msg->key.who);
+      if(res == ERR_NO_USER){
+         res = ERR_RECIPIENT_INVALID;
+      }else if(res >= 0){
+        doResponse = 1;
+        responseData.type = KEY;
+        memcpy(responseData.key.who, msg->key.who, MAX_USER_LEN);
+      }
+      break;
     case PRIV_MSG:
     case PUB_MSG:
       res = db_add_message(&state->dbConn, msg, state->uid);
@@ -249,6 +258,7 @@ int execute_request(struct worker_state* state,
   if (doResponse) {
     state->apifuncs.send(&state->api, &responseData);
   }
+
   api_msg_free(&responseData);
 
   return res;

@@ -84,7 +84,7 @@ static int client_process_command(struct client_state* state) {
   char *p_end = input + strlen(input);
   while (p < p_end && isspace(*p)) p++;
   
-  if (p[0] == '@') errcode = input_handle_privmsg(state, &apimsg, p);
+  if (p[0] == '@') errcode = input_handle_privmsg(state->head_certs, state->head_msg_queue, state->cert, &apimsg, p);
   else if (p[0] == '/') {                      
     p++;
     if (strlen(p) == 0 || p[0] == ' ') errcode = ERR_COMMAND_ERROR;
@@ -104,7 +104,7 @@ static int client_process_command(struct client_state* state) {
     free(input);
     return 0;
   }
-  
+
   free(input);
   if (errcode != 0) {
     printf("error: invalid command format\n\t");
@@ -171,13 +171,17 @@ static void formatTime(char* buffer, int size, timestamp_t timestamp){
   strftime(buffer, size, "%Y-%m-%d %H:%M:%S", tm_info);
 }
 
-static void privMsg(const struct api_msg * msg){
+static void privMsg(struct client_state* state, const struct api_msg * msg){
   char buffer[26];
   formatTime(buffer, 26, msg->priv_msg.timestamp);
   
+  char* unencrpyted = crypto_RSA_privkey_decrypt(state->privkey, msg->priv_msg.frommsg);
+
   //never print more than the respective maximum lengths.
   printf("%s %.*s: @%.*s %.*s\n", buffer, MAX_USER_LEN, 
-  msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, msg->priv_msg.msg);
+    msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, unencrpyted);
+  
+  free(unencrpyted);
 }
 
 static void pubMsg(const struct api_msg * msg){
@@ -191,12 +195,38 @@ static void pubMsg(const struct api_msg * msg){
 static void who(const struct api_msg * msg){
   printf("users:\n%s\n", msg->who.users);
 }
-static void handle_key(struct client_state* state, const struct api_msg * msg){
-  list_add(state->head_certs, msg->key.owner, msg->key.key, sizeof(msg->key.key));
-  
-  //verify the certificate 
-  //place key in list
-  //look at the queue
+
+// Data to pass into callback
+struct callback_data_in { X509* other; struct client_state* state; };
+
+// Man I wish lambda functions existed in C
+// Called on a linked list, sending stored messages
+static void list_msg_send_callback(Node* n, void* usr){
+  struct api_msg* msg = (struct api_msg*)n->contents;
+  struct callback_data_in* data = usr;
+
+  handle_privmsg_send(data->state->cert, data->other, msg);
+
+  api_send(&data->state->api, msg);
+}
+
+static int handle_key(struct client_state* state, const struct api_msg* msg){
+  if(!msg->certLen) return ERR_INVALID_API_MSG;
+  // TODO: Verify cert authenticity (make sure the who matches the cert entry, and the CA signed it)
+
+  X509* recievedCert = crypto_parse_x509_string(msg->cert);
+
+  // Add cert to the list
+  list_add(state->head_certs, msg->key.who, recievedCert, sizeof(recievedCert)); 
+
+  struct callback_data_in data;
+  data.other = recievedCert;
+  data.state = state;
+
+  // Send queued messages
+  list_exec(state->head_msg_queue, msg->key.who, list_msg_send_callback, &data, 1);
+
+  return 0;  
 }
 
 static void loginAck(const struct api_msg* msg, struct client_state* state){
@@ -217,6 +247,7 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
   unencrpyted[outlen] = '\0';
 
   state->privkey = crypto_parse_RSA_priv_string(unencrpyted);
+  d_privkey = state->privkey;
   free(unencrpyted);
 }
 
@@ -238,7 +269,7 @@ static int execute_request(
       status(msg);
       break;
     case PRIV_MSG:
-      privMsg(msg);
+      privMsg(state, msg);
       break;
     case PUB_MSG:
       pubMsg(msg);

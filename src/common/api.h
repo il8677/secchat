@@ -7,6 +7,9 @@
 #define MAX_USER_LEN 10
 #define MAX_MSG_LEN 160
 
+// Maximum length of RSA encrypted message (we use 2048 bits)
+#define MAX_ENCRYPT_LEN 256
+
 // Because preprocessors cannot do athrithmetic 
 #define MAX_USER_LEN_M1 9
 #define MAX_MSG_LEN_M1 159
@@ -22,11 +25,13 @@
     case NONE: printf("["dmsg"] None\n"); break;\
     case ERR: printf("["dmsg"] ERR %d\n", apimsg.errcode); break;\
     case STATUS: printf("["dmsg"] STATUS %.*s\n", MAX_MSG_LEN, apimsg.status.statusmsg); break;\
-    case PRIV_MSG: printf("["dmsg"] MSG %.*s -> %.*s: %.*s\n", MAX_USER_LEN, apimsg.priv_msg.from, MAX_USER_LEN, apimsg.priv_msg.to, MAX_MSG_LEN, apimsg.priv_msg.msg); break;\
+    case PRIV_MSG: printf("["dmsg"] PRIV_MSG %.*s -> %.*s\n", MAX_USER_LEN, apimsg.priv_msg.from, MAX_USER_LEN, apimsg.priv_msg.to); break;\
     case PUB_MSG: printf("["dmsg"] MSG %.*s: %.*s\n", MAX_USER_LEN, apimsg.pub_msg.from, MAX_MSG_LEN, apimsg.pub_msg.msg); break;\
     case WHO: printf("["dmsg"] WHO\n"); break;\
     case REG: case LOGIN: printf("["dmsg"] LOGIN/REG %.*s %.*s\n", MAX_USER_LEN, apimsg.reg.username, MAX_USER_LEN, apimsg.reg.password); break;\
     case EXIT: printf("["dmsg"] EXIT\n"); break;\
+    case LOGINACK: printf("["dmsg"] LOGINACK\n"); break;\
+    case KEY: printf("["dmsg"] KEY %.*s\n", MAX_USER_LEN, msg.key.who); break;\
     default: printf("["dmsg"] UNRECONGIZED\n"); break;\
   }
 #else
@@ -53,18 +58,20 @@ struct api_msg {
     struct {
       timestamp_t timestamp;
 
-      char msg[MAX_MSG_LEN];
-
       char from[MAX_USER_LEN];
       char to[MAX_USER_LEN];
+      
+      char frommsg[MAX_ENCRYPT_LEN];
+      char tomsg[MAX_ENCRYPT_LEN];
+
     } priv_msg;
 
     struct {
       timestamp_t timestamp;
 
-      char msg[MAX_MSG_LEN];
-
       char from[MAX_USER_LEN];
+      
+      char msg[MAX_MSG_LEN];
     } pub_msg;
 
     struct {
@@ -72,9 +79,10 @@ struct api_msg {
     } who;
 
     struct {
-      //TODO: the actual type of a key
-      char *key;
-      char *owner;
+      // So who aligns with priv_msg to
+      timestamp_t padding1;
+      char padding4[MAX_USER_LEN];
+      char who[MAX_USER_LEN];
     } key;
 
     struct {

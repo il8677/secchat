@@ -6,6 +6,7 @@
 #include <ctype.h>
 
 #include "ui.h"
+#include "linkedlist.h"
 #include "../common/api.h"
 #include "../common/errcodes.h"
 #include "../util/crypto.h"
@@ -61,27 +62,21 @@ int message_too_long(char* msg) {
   return strlen(msg)+1 > MAX_MSG_LEN;  
 }
 
+void handle_privmsg_send(X509* selfcert, X509* other, struct api_msg* msg){
+  msg->type = PRIV_MSG;
 
+  // The message is stored in frommsg, encrypt and store. The recipient is already set
+  crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, other, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg)+1);
+  crypto_RSA_pubkey_encrypt(msg->priv_msg.frommsg, selfcert, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg)+1);
 
-int privmsg_encrypt(struct client_state* state, struct api_msg* msg){
-    
-  struct api_msg encrypted_msg_rec;
-  struct api_msg encrypted_msg_sender;
-    
-  int len = strlen(msg->priv_msg.msg);
-  struct node* keynode = list_exist(state->head_certs, msg->priv_msg.to);
-  if ( keynode == NULL) {
-    list_add(state->head_msg_queue, msg->priv_msg.to, msg ,len); //prob doesnt work but the data should be the msg no?
-    return;
-  }
-   
-
-  RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_rec.priv_msg.msg, keynode->contents , RSA_PKCS1_OAEP_PADDING);
-  RSA_public_encrypt(len,msg->priv_msg.msg, encrypted_msg_sender.priv_msg.msg, keynode->contents, RSA_PKCS1_OAEP_PADDING);
-  
+    char* decrypted = crypto_RSA_privkey_decrypt(d_privkey, msg->priv_msg.frommsg);
+    printf("Outgoing private message %s\n", decrypted);
+    free(decrypted); 
 }
 
-int input_handle_privmsg(struct client_state* state, struct api_msg* apimsg, char* p) {
+int input_handle_privmsg(Node* certList, Node* msgQueue, X509* selfcert, struct api_msg* apimsg, char* p) {
+  if(selfcert == NULL) return ERR_NO_USER;
+  
   p++;
 
   if (p[0] == ' ') return ERR_NAME_INVALID;
@@ -94,11 +89,25 @@ int input_handle_privmsg(struct client_state* state, struct api_msg* apimsg, cha
   
   while (msg < msg+strlen(msg) && isspace(*msg)) msg++;
 
-  apimsg->type = PRIV_MSG;
-  strncpy(apimsg->priv_msg.to, to, MAX_USER_LEN);
-  strncpy(apimsg->priv_msg.msg, msg, MAX_MSG_LEN); 
+  // Find key of person who we're sending a message to
+  Node* cert = list_find(certList, to);
 
-  privmsg_encrypt(state, apimsg);
+  strncpy(apimsg->key.who, to, MAX_USER_LEN);
+  strncpy(apimsg->priv_msg.frommsg, msg, MAX_MSG_LEN) ;
+  
+  if(cert == NULL){ // No key
+    // Create key request
+    apimsg->type = KEY;
+
+    // Add message to queue
+    list_add(msgQueue, to, apimsg, sizeof(struct api_msg));
+
+    // Wipe msg so it isn't leaked to server
+    memset(apimsg->priv_msg.frommsg, 0, MAX_MSG_LEN);
+  }else{
+    handle_privmsg_send(selfcert, (X509*)cert->contents, apimsg);
+  }
+
   return 0;
 }
 

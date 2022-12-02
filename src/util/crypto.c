@@ -106,11 +106,24 @@ void crypto_RSA_pubkey_encrypt(char* dst, X509* key, char* msg, uint16_t msglen)
 
     EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(pkey, NULL);
     EVP_PKEY_encrypt_init(ctx);
-
+    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING);
+    
     size_t outlen = MAX_ENCRYPT_LEN;
 
     EVP_PKEY_encrypt(ctx, (unsigned char*)dst, &outlen, (unsigned char*)msg,  msglen);
 
     EVP_PKEY_free(pkey);
     EVP_PKEY_CTX_free(ctx);
+}
+
+char* crypto_RSA_privkey_decrypt(RSA* key, const char* msg){
+    char* outbuf = malloc(RSA_size(key));
+    
+    // Note: This is depractated but it was provided in the examples
+    RSA_private_decrypt(RSA_size(key), (const unsigned char*) msg, (unsigned char*) outbuf, key, RSA_PKCS1_OAEP_PADDING);
+
+    // Worse comes to worse we just print junk
+    outbuf[RSA_size(key)] = '\0';
+
+    return outbuf;
 }

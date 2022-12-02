@@ -60,25 +60,49 @@ void db_create(struct db_state* state){
         cert VARCHAR("STR(MAX_CERT)") NOT NULL);", 
     NULL, NULL);
 
-    // Create message db
+    // Create DB for both, this is needed for a common ordering between public and private messages
     sql_exec(state->db, 
     "CREATE TABLE IF NOT EXISTS messages ( \
         id INTEGER PRIMARY KEY AUTOINCREMENT, \
-        sender INTEGER NOT NULL, \
-        recipient INTEGER DEFAULT NULL, \
-        msg VARCHAR(" STR(MAX_MSG_LEN_M1) ") NOT NULL, \
         timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now')), \
-        FOREIGN KEY(sender) REFERENCES users(id),\
-        FOREIGN KEY(recipient) REFERENCES users(id));", 
+        sender INTEGER NOT NULL, \
+        FOREIGN KEY(sender) REFERENCES users(id))",
     NULL, NULL);
+
+    // Create message db
+    sql_exec(state->db, 
+    "CREATE TABLE IF NOT EXISTS pub_messages ( \
+        id INTEGER PRIMARY KEY, \
+        msg VARCHAR(" STR(MAX_MSG_LEN_M1) ") NOT NULL, \
+        FOREIGN KEY(id) REFERENCES messages(id))", 
+    NULL, NULL);
+
+    // Create DM db
+    sql_exec(state->db,
+    "CREATE TABLE IF NOT EXISTS priv_messages( \
+        id INTEGER PRIMARY KEY, \
+        recipient INTEGER NOT NULL, \
+        sendermsg BLOB("STR(MAX_ENCRYPT_LEN)") NOT NULL, \
+        recipientmsg BLOB("STR(MAX_ENCRYPT_LEN)") NOT NULL, \
+        FOREIGN KEY(recipient) REFERENCES users(id), \
+        FOREIGN KEY(id) REFERENCES messages(id))", NULL, NULL);
 }
 
 // TODO: Cleanup this function
 int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*), timestamp_t* lastviewed){
-    char* query = sqlite3_mprintf("SELECT messages.id, su.username, ru.username, msg, timestamp \
-                            FROM messages INNER JOIN users AS su ON su.id == sender \
-                            LEFT JOIN users AS ru ON ru.id == recipient \
-                            WHERE messages.id > %d AND (recipient IS NULL OR recipient == %d OR sender == %d)", *lastviewed, uid, uid);
+
+    // Big statement, creates a union between the public messages, private messages where the user is the sender, and private messages where the user is the recipient,
+    // selecting for the appropriate encrypted msg out of the pair.
+    char* query = sqlite3_mprintf("SELECT q1.id, q1.timestamp, su.username, ru.username, q1.msg FROM \
+        (SELECT messages.id, timestamp, sender, NULL AS recipient, msg FROM pub_messages LEFT JOIN messages ON messages.id == pub_messages.id \
+        UNION ALL \
+        SELECT messages.id, timestamp, sender, recipient, sendermsg FROM priv_messages LEFT JOIN messages ON messages.id == priv_messages.id WHERE sender == %d \
+        UNION ALL \
+        SELECT messages.id, timestamp, sender, recipient, recipientmsg FROM priv_messages LEFT JOIN messages ON messages.id == priv_messages.id WHERE recipient == %d) AS q1 \
+        LEFT JOIN users AS su ON su.id == q1.sender \
+        LEFT JOIN users AS ru ON ru.id == q1.recipient \
+        WHERE q1.id > %i ;", 
+        uid, uid, *lastviewed);
 
 
     sqlite3_stmt* statement;
@@ -87,7 +111,6 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, ERR_SQL, retvalue);
 
     int res = sqlite3_step(statement);
-    timestamp_t timestamp; // Keep track of last id read so if a new message comes in while the function is running it is still displayed
     
     while(res == SQLITE_ROW){
         // Create api_msg to represent the row
@@ -97,31 +120,32 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
         *lastviewed = sqlite3_column_int64(statement, 0);
         
         // These do NOT have to be freed (they are freed by finalize)
-        const char* sender = (const char*)sqlite3_column_text(statement, 1);
-        const char* recipient = (const char*)sqlite3_column_text(statement, 2);
+        timestamp_t timestamp = sqlite3_column_int64(statement, 1);
+        const char* sender = (const char*)sqlite3_column_text(statement, 2);
+        const char* recipient = (const char*)sqlite3_column_text(statement, 3);
 
-        const char* msg = (const char*)sqlite3_column_text(statement, 3);
-        timestamp = sqlite3_column_int64(statement, 4);
-
-        // The offsets should be the same so priv_msg and pub_msg should be equivalent
-        row.priv_msg.timestamp = timestamp;
-
-        // string should be of correct length, but just to be safe
-        strncpy(row.priv_msg.msg, msg, MAX_MSG_LEN);
-        row.priv_msg.msg[MAX_MSG_LEN-1] = '\0';
-        
-        
-        strncpy(row.priv_msg.from, sender, MAX_USER_LEN);
-        row.priv_msg.from[MAX_USER_LEN-1] = '\0';
-
-        row.type = PUB_MSG;
-
-        if(recipient != NULL){
+        const unsigned char* msg;
+        if(recipient == NULL){
+            msg = sqlite3_column_text(statement, 4);
+            // string should be of correct length, but just to be safe
+            strncpy(row.pub_msg.msg, (const char*)msg, MAX_MSG_LEN);
+            row.pub_msg.msg[MAX_MSG_LEN-1] = '\0';
+            
+            row.type = PUB_MSG;
+        }else{
+            msg = sqlite3_column_blob(statement, 4);
+            memcpy(row.priv_msg.frommsg, msg, MAX_ENCRYPT_LEN);
             strncpy(row.priv_msg.to, recipient, MAX_USER_LEN);
             row.priv_msg.to[MAX_USER_LEN-1] = '\0';
 
             row.type=PRIV_MSG;
         }
+
+        // The offsets should be the same so priv_msg and pub_msg should be equivalent
+        row.priv_msg.timestamp = timestamp;
+
+        strncpy(row.priv_msg.from, sender, MAX_USER_LEN);
+        row.priv_msg.from[MAX_USER_LEN-1] = '\0';
 
         if((retvalue = cb(astate, &row))) goto cleanup;
 
@@ -134,6 +158,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
     sqlite3_free(query);
 
     return retvalue;
+    return 0;
 }
 
 /// @brief Returns an ID for name
@@ -185,7 +210,7 @@ int verify_login(struct db_state* state, const char* username, const char* passw
 
 int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* username){
     int id = nametoid(state, username);
-    int retvalue = ERR_SQL;
+    int retvalue = 0;
     if(id < 0) return id;
 
     char* query = sqlite3_mprintf("SELECT privkey, LENGTH(privkey) FROM users WHERE id=%d;", id);
@@ -209,7 +234,7 @@ int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* user
 
 int db_add_cert(struct db_state* state, struct api_msg* msg, const char* username){
     int id = nametoid(state, username);
-    int retvalue = ERR_SQL;
+    int retvalue = 0;
     if(id < 0) return id;
 
     char* query = sqlite3_mprintf("SELECT cert FROM users WHERE id=%d;", id);
@@ -231,6 +256,8 @@ int db_add_cert(struct db_state* state, struct api_msg* msg, const char* usernam
 
 int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
     char* query = NULL;
+    sqlite3_stmt* stmt = NULL;
+    int res;
 
     // Create relevant query to insert message
     if(msg->type == PRIV_MSG){
@@ -239,18 +266,35 @@ int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
         // If error
         if(id == ERR_NO_USER) return ERR_RECIPIENT_INVALID;
         if(id < 0) return id;
-        
-        query = sqlite3_mprintf("INSERT INTO messages (sender, recipient, msg) VALUES (%i, %i, %Q);", uid, id, msg->priv_msg.msg);
 
+        query = sqlite3_mprintf("INSERT INTO messages (sender) VALUES (%i);", uid);
+        
+        sql_exec(state->db, query, NULL, NULL);
+        
+        sqlite3_free(query);
+
+        query = sqlite3_mprintf("INSERT INTO priv_messages (id, recipient, sendermsg, recipientmsg) VALUES (last_insert_rowid(), %i, @sendermsg, @recipientmsg);", id);
+
+        SQL_CALL(sqlite3_prepare_v2(state->db, query, -1, &stmt, NULL), state->db, ERR_SQL, res);
+        SQL_CALL(sqlite3_bind_blob(stmt, 1, msg->priv_msg.frommsg, MAX_ENCRYPT_LEN, NULL), state->db, ERR_SQL, res);
+        SQL_CALL(sqlite3_bind_blob(stmt, 2, msg->priv_msg.tomsg, MAX_ENCRYPT_LEN, NULL), state->db, ERR_SQL, res);
+
+        res = sqlite3_step(stmt);
+
+        if(res != SQLITE_DONE) res = ERR_SQL;
+        else res = 0;
     }else if(msg->type == PUB_MSG){
-        query = sqlite3_mprintf("INSERT INTO messages (sender, msg) VALUES (%i, %Q);", uid, msg->pub_msg.msg);
+        query = sqlite3_mprintf("INSERT INTO messages (sender) VALUES (%i);\
+            INSERT INTO pub_messages (id, msg) VALUES (last_insert_rowid(), %Q);", uid, msg->pub_msg.msg);
+        res = sql_exec(state->db, query, NULL, NULL);
     }else{
         return ERR_INVALID_API_MSG;
     }
 
-    int res = sql_exec(state->db, query, NULL, NULL);
 
+    cleanup:
     sqlite3_free(query);
+    if(stmt != NULL) sqlite3_finalize(stmt);
     
     return res == SQLITE_OK ? 0 : ERR_SQL;
 }

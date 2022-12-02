@@ -28,14 +28,14 @@ void list_add(Node* head, const char* key, void* data, uint16_t datalen) {
     memcpy(node->contents, data, datalen);
     
     while(head->next != NULL) {
-        if(strcmp(key, head->key) == 0) return; // Don't insert something that already exists
+        if(head->key != NULL && strcmp(key, head->key) == 0) return; // Don't insert something that already exists
         head = head->next;
     }
     head->next = node;
 }
 
 void list_del(Node* head, const char* key) {
-    while(head->next != NULL){
+    while(head != NULL && head->next != NULL){
         if(strcmp(head->next->key, key) == 0) {
             Node* temp;
             temp = head->next;
@@ -47,7 +47,7 @@ void list_del(Node* head, const char* key) {
 }
 
 void list_exec(Node* head, const char* key, list_cb_t cb, void* userData, char doDelete){
-    while(head->next != NULL){
+    while(head != NULL && head->next != NULL){
         if(strcmp(head->next->key, key) == 0) {
             cb(head->next, userData);
             if(doDelete){
