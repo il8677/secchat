@@ -23,6 +23,7 @@ const msgtype = {
 
 const MAX_MSG_LEN = 160;
 const MAX_USER_LEN = 10;
+const HASH_OUT_LEN = 20;
 
 const timestampSize = 8; 
 
@@ -76,14 +77,14 @@ function getWho(req){
 
 function getLogin(username, password){
     username = nullpad(username, MAX_USER_LEN);
-    password = nullpad(password, MAX_USER_LEN);
-    
-    // TODO: hashing
+    password = sjcl.hash.sha1.hash(password)
+    password = sjcl.codec.bytes.fromBits(password);
+
     const b = new Blob([
         new Uint32Array([msgtype.LOGIN]),
         new Uint32Array([0]),
         new String(username),
-        new String(password)
+        new Uint8Array(password)
     ]);
 
     return b;
@@ -91,13 +92,14 @@ function getLogin(username, password){
 
 function getReg(username, password){
     username = nullpad(username, MAX_USER_LEN);
-    password = nullpad(password, MAX_USER_LEN);
+    password = sjcl.hash.sha1.hash(password)
+    password = sjcl.codec.bytes.fromBits(password);
 
     const b = new Blob([
         new Uint32Array([msgtype.REG]),
         new Uint32Array([0]),
         new String(username),
-        new String(password)
+        new Uint8Array(password)
     ]);
 
     return b;
@@ -121,7 +123,7 @@ function errcodeToString(errcode){
     }
 }
 
-// TODO: Merge with process message
+
 // Displays a message on a div given by outid
 // Returns if it was a valid message or not
 function showMessage(msg, outid){
