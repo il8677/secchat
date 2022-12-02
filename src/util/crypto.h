@@ -27,4 +27,7 @@ void crypto_RSA_pubkey_encrypt(char* dst, X509* key, char* msg, uint16_t msglen)
 char* crypto_RSA_privkey_decrypt(RSA* key, const char* msg);
 
 void crypto_RSA_sign(RSA* key, const char* msg, uint16_t msglen, unsigned char* output);
+
+int crypto_RSA_verify(X509* key, const char* msg, uint16_t msglen);
+
 #endif

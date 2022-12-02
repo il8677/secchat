@@ -23,7 +23,7 @@ int input_handle_exit(struct api_msg* apimsg, char* p);
 int input_handle_users(struct api_msg* apimsg, char* p);
 int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout);
 int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout);
-int input_handle_pubmsg(struct api_msg* apimsg, char* p);
+int input_handle_pubmsg(RSA* key, struct api_msg* apimsg, char* p);
 
 /// @brief Formats message as a privkey
 /// @param selfcert 

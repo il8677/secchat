@@ -97,7 +97,10 @@ static int client_process_command(struct client_state* state) {
       else errcode = ERR_COMMAND_ERROR;
     }
   }
-  else errcode = input_handle_pubmsg(state->privkey , &apimsg, p);
+  else {
+    errcode = input_handle_pubmsg(state->privkey, &apimsg, p);
+    //crypto_RSA_verify(state->cert, apimsg.pub_msg.msg, strlen(apimsg.pub_msg.msg)); to test signing and verifying
+  }
   
   if (errcode == ERR_COMMAND_ERROR){
     printf("error: unknown command %s\n", input);
@@ -120,7 +123,6 @@ static int client_process_command(struct client_state* state) {
     api_msg_free(&apimsg);
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying
   }
-
   api_send(&(state->api), &apimsg);
   api_msg_free(&apimsg);
   return 0;

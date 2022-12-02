@@ -179,7 +179,7 @@ int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout) {
   return 0;
 }
 
-int input_handle_pubmsg(RSA * key, struct api_msg* apimsg, char* p) {
+int input_handle_pubmsg(RSA* key, struct api_msg* apimsg, char* p) {
   char *p_start = p;
   char *p_last = p + strlen(p) -1;
 
@@ -191,8 +191,8 @@ int input_handle_pubmsg(RSA * key, struct api_msg* apimsg, char* p) {
   
   apimsg->type = PUB_MSG;
   strncpy(apimsg->pub_msg.msg, p_start, MAX_MSG_LEN);
-  char * hashedmsg;
   crypto_hash(apimsg->pub_msg.msg,strlen(apimsg->pub_msg.msg), (unsigned char*)apimsg->pub_msg.hash);
+  printf("HASH:%s\n", apimsg->pub_msg.hash);
   crypto_RSA_sign(key, apimsg->pub_msg.hash, strlen(apimsg->pub_msg.hash), (unsigned char*)apimsg->pub_msg.hash); 
   return 0;
 }

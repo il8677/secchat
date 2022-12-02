@@ -2,6 +2,7 @@
 #include "../common/api.h"
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <openssl/evp.h>
 #include <stdio.h>
 #include <string.h>
@@ -142,4 +143,23 @@ void crypto_RSA_sign(RSA* key, const char* msg, uint16_t msglen, unsigned char* 
     //cleanup
     EVP_PKEY_free(evpKey);
     EVP_MD_CTX_free(ctx);
+}
+
+int crypto_RSA_verify(X509* key, const char* msg, uint16_t msglen) {
+    EVP_PKEY* pkey = X509_get_pubkey(key);
+    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+    int r;
+    unsigned int siglen;
+    unsigned char *sig;
+
+    /* read signature from stdin into sig */
+    sig = malloc(EVP_PKEY_size(pkey));
+    siglen = read(0, sig, EVP_PKEY_size(pkey));
+
+    /* verify signature */
+    EVP_VerifyInit(ctx, EVP_sha1());
+    EVP_VerifyUpdate(ctx, msg, msglen);
+    r = EVP_VerifyFinal(ctx, sig, siglen, pkey);
+    printf("signature is %s\n", (r == 1) ? "good" : "bad");
+    return r;
 }
