@@ -186,5 +186,5 @@ function createWebsocket(){
 window.addEventListener("load", () => {
     // bad global variable! But I'm not sure how it should be properly done
     document.commSocket = createWebsocket();
-    document.addEventListener("recievedMessage", (event) => {showMessage(event.detail, "messagebox");}); // Add listener to show status messages / errors
+    document.addEventListener("recievedMessage", (event) => {showMessage(event.detail, "statusbox");}); // Add listener to show status messages / errors
 });

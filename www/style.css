@@ -13,8 +13,17 @@ form > * {
 }
 
 .mainbox {
-    overflow:hidden; 
-    width:350px; 
-    height:325px; 
+    overflow:hidden;
+    width:700px; 
+    height:500px; 
     border: 1px solid blue;
+}
+
+.message {
+    text-align: left;
+}
+
+#chat{
+    height: 325px;
+    overflow-y: scroll;
 }
