@@ -85,7 +85,6 @@ int worker_state_init(struct worker_state* state, int connfd,
 
   /* set up API state */
   api_state_init(&state->api, connfd, TLS_server_method());
-  printf("SSL PTR: %p\n", state->api.ssl);
 
   state->uid = -1;
 
