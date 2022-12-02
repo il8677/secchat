@@ -251,7 +251,7 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
   char* unencrpyted = crypto_aes_encrypt(msg->encPrivKey, msg->encPrivKeyLen, state->password, 0, &outlen);
   
   // Make sure its null terminated
-  unencrpyted[outlen] = '\0';
+  unencrpyted[outlen-1] = '\0';
 
   state->privkey = crypto_parse_RSA_priv_string(unencrpyted);
   d_privkey = state->privkey;
