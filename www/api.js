@@ -69,7 +69,7 @@ function getPubMsg(msg){
     return b;
 }
 
-function getWho(req){
+function getWho(){
     const b = new Blob([new Uint32Array([msgtype.WHO])]);
 
     return b;

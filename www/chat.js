@@ -15,12 +15,19 @@ function handleMessageSend(event){
     sendData(getPubMsg(message));
 }
 
+function who(){
+    sendData(getWho());
+}
+
 window.addEventListener("load", () => {
     document.getElementById("msg-form").addEventListener("submit", handleMessageSend);
     document.getElementById("msgbox").style.display = "none";
 
     document.addEventListener("loggedIn", () => {
         document.getElementById("msgbox").style.display = "";
+
+        // Update online users every 5s
+        setInterval(who, 5000);
     });
 
     document.addEventListener("recievedMessage", (event)=>{
@@ -28,6 +35,8 @@ window.addEventListener("load", () => {
 
         if(msg.type == msgtype.PUB_MSG || msg.type == msgtype.PRIV_MSG){
             addMessage(msg);
+        }else if (msg.type == msgtype.WHO){
+            document.getElementById("who").innerHTML = msg.who;
         }
     });
 });
