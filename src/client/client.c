@@ -97,9 +97,7 @@ static int client_process_command(struct client_state* state) {
       else errcode = ERR_COMMAND_ERROR;
     }
   }
-  else {
-    errcode = input_handle_pubmsg(state->privkey, &apimsg, p);
-  }
+  else errcode = input_handle_pubmsg(state->privkey, &apimsg, p);
   
   if (errcode == ERR_COMMAND_ERROR){
     printf("error: unknown command %s\n", input);
