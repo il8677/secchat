@@ -41,7 +41,7 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
     if(res != msg->certLen) return -1; // Recieved wrong length, malformed packet = drop peer
     
     // Null terminate so we can treat as string safely
-    msg->cert[msg->certLen] = '\0';
+    msg->cert[msg->certLen-1] = '\0';
   }
   return 1;
 }

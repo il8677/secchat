@@ -187,7 +187,6 @@ int nametoid(struct db_state* state, const char* name){
 /// @brief Verifies a username / password pair is correct
 /// @param state db state
 /// @return Userid if correct, ERR_INCORECT_LOGIN if not
-
 int verify_login(struct db_state* state, const char* username, const char* password){
     int retvalue = ERR_INCORRECT_LOGIN;
 
