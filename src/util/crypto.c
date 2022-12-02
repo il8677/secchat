@@ -1,9 +1,11 @@
 #include "crypto.h"
+#include "../common/api.h"
 
 #include <stdlib.h>
 #include <openssl/evp.h>
 #include <stdio.h>
 #include <string.h>
+#include <openssl/rsa.h>
 
 // TODO: Use sha-2 and salt (do in another function, this function and sha-1 are needed for web)
 // https://www.openssl.org/docs/man1.1.1/man3/SHA512_Init.html
@@ -95,4 +97,20 @@ RSA* crypto_parse_RSA_priv_string(const char* rsapriv){
     BIO_free(bio);
 
     return key;
+}
+
+// Adapted from https://stackoverflow.com/questions/73631293/how-to-encrypt-a-string-using-openssl-c-library-and-a-public-key-file
+void crypto_RSA_pubkey_encrypt(char* dst, X509* key, char* msg, uint16_t msglen){
+    // Get public key from certificate
+    EVP_PKEY* pkey = X509_get_pubkey(key);
+
+    EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(pkey, NULL);
+    EVP_PKEY_encrypt_init(ctx);
+
+    size_t outlen = MAX_ENCRYPT_LEN;
+
+    EVP_PKEY_encrypt(ctx, (unsigned char*)dst, &outlen, (unsigned char*)msg,  msglen);
+
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
 }

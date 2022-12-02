@@ -21,4 +21,6 @@ X509* crypto_parse_x509_string(const char* x509str);
 /// @brief Parses string to produce RSA privkey
 RSA* crypto_parse_RSA_priv_string(const char* rsapriv);
 
+/// @brief RSA encrypts a message using an X509 certificate as key
+void crypto_RSA_pubkey_encrypt(char* dst, X509* key, char* msg, uint16_t msglen);
 #endif
