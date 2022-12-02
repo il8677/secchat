@@ -270,7 +270,7 @@ static int execute_request(
     switch (msg->type)
     {
     case ERR:
-    error(msg);
+      error(msg);
       break;
     case STATUS:
       status(msg);

@@ -1,6 +1,7 @@
 # walkthrough
 
-## client initialization 
+## client initialization ?? not sure if top of the page is the place for this
+When we initialize the client we create two linked lists. One we use to store certificates from other clients to look up public keys for when we are private messaging them. The other is used as a queue to temporarily store the private message we were about to send but for which we do not have the recipients certificate yet. A special KEY request is then send to the server which will provide us with the certificate of the user we want to privately communicate with.
 
 ## parsing input
 The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct within the api_message. If the message is too long, the command is invalid or the amount of arguments is invalid we give an error and ask them to try again. Depending on the command a handler function is then called. (client_process_command, client.c)
@@ -12,15 +13,17 @@ Depending on the command different steps are taken.
     When register is called we first check if the username has already been taken or not and if the password and/or the username is valid (not empty). We then hash the password, request a certificate from the CA and generate a private key. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. 
 
 -   ### login       TODO: salt? verify that the private key is actually correct w certificate?
-    After login is called we hash the password and send it with the username to the server. If the the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and verify the certificate with the key. 
+    After login is called we hash the password and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and verify the certificate with the key. 
     
 -   ### public message
+    When sending a public message we use RSA digital signatures to make sure that what we send is not tempered with during transmission. We first compute the hash of the message and sign it with the sender's private key. Then we send it over the wire where the receiving end computes the hash of the message and verifies the message by decrypting the signature using the senders public key. If the computed hash and the decryption are equal then the signature is correct.
 
 -   ### private message
 
--   ### users
 
--   ### exit
+-   ### users ?? dont think we need this here
+
+-   ### exit ?? dont think we need this here
 
  The structs are then sent to the socket.
 
@@ -55,7 +58,7 @@ The message has a statusmsg field containing a string sent by the server.
 ### error
 The message has an errcode field containing an errorcode sent by the server. This is processed by the client in the function error (client.c) where the appropriate error message is printed. Error codes are defined in errcodes.h 
 ### priv_msg
-The message hav a timestamp (unix), a msg field, a from field, and a to field. 
+The message has a timestamp (unix), a msg field, a from field, and a to field. 
 ### pub_msg
 Identical to priv_msg without a to field.
 ### who
