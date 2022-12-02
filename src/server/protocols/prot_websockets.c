@@ -33,12 +33,7 @@ int send_header(struct api_state* state, uint64_t length, char opcode){
     }
 
     header[1] = len1;
-
-    for(int i = 0; i < headerLen; i++){
-        printf("%x ", header[i]);
-    }
-    printf("\n");
-
+    
     return ssl_block_write(state->ssl, state->fd, header, headerLen);
 }
 
@@ -73,16 +68,25 @@ char* protwb_processKey(const char *str){
     return b64result;
 }
 
+int wb_api_to_json_send(struct api_state* state, struct api_msg* msg){
+    char* json = api_msg_to_json(msg);
+    send_frame(state, (unsigned char*)json, strlen(json), 0x1);
+    free(json);
+
+    return 1;
+}
+
+static int msg_query_cb(struct api_state* state, struct api_msg* msg){
+    return wb_api_to_json_send(state, msg) == 1 ? 0 : -1;
+}
+
 int protwb_notify(struct worker_state* state){
+    db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb, &state->lastviewed);
     return 0;
 }
 
 int protwb_send(struct worker_state* state, struct api_msg* msg){
-    char* json = api_msg_to_json(msg);
-
-    printf("Sending %s\n", json);
-    send_frame(&state->api, (unsigned char*)json, strlen(json), 0x1);
-    free(json);
+    wb_api_to_json_send(&state->api, msg);
     return 1;
 }
 

@@ -27,6 +27,7 @@ const MAX_USER_LEN = 10;
 const timestampSize = 8; 
 
 // Adapted from https://stackoverflow.com/questions/11177153/null-padding-a-string-in-javascript
+// Formats a string to a null terminated length
 function nullpad( str, len ) {
     if( str.length >= len ) {
         return str.substring(0, len-1);
@@ -38,9 +39,9 @@ function nullpad( str, len ) {
 // Functions to format binary that represents api_msg, it was this or to parse JSON in C, so this felt like the lesser evil
 function getPrivMsg(msg, to){
     // Length constraints
-    msg = nullpad(str, MAX_MSG_LEN);
+    msg = nullpad(msg, MAX_MSG_LEN);
     from = nullpad("", MAX_USER_LEN);
-    to = nullpad(str, MAX_USER_LEN);
+    to = nullpad(to, MAX_USER_LEN);
 
     const b = new Blob([
         new Uint32Array([msgtype.PRIV_MSG]),         // Type
@@ -55,7 +56,7 @@ function getPrivMsg(msg, to){
 }
 
 function getPubMsg(msg){
-    msg = nullpad(str, MAX_MSG_LEN);
+    msg = nullpad(msg, MAX_MSG_LEN);
 
     const b = new Blob([
         new Uint32Array([msgtype.PUB_MSG]),         // Type
@@ -100,22 +101,6 @@ function getReg(username, password){
     ]);
 
     return b;
-}
-
-function createWebsocket(){
-    // TODO: Not static URL
-    const ws = new WebSocket("wss://localhost");
-
-    ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-
-        console.log("Data recieved");
-        console.log(msg);
-
-        document.dispatchEvent(new CustomEvent("recievedMessage", {detail: msg}));
-    }
-
-    return ws;
 }
 
 function sendData(data){
@@ -182,8 +167,24 @@ function formatUnix(unix_timestamp){
     return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
 }
 
+function createWebsocket(){
+    // TODO: Not static URL
+    const ws = new WebSocket("wss://localhost");
+
+    ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        console.log("Data recieved");
+        console.log(msg);
+
+        document.dispatchEvent(new CustomEvent("recievedMessage", {detail: msg})); // The recieve message event is triggered when an api msg is recieved from the server
+    }
+
+    return ws;
+}
+
 window.addEventListener("load", () => {
     // bad global variable! But I'm not sure how it should be properly done
     document.commSocket = createWebsocket();
-    document.addEventListener("recievedMessage", (event) => {showMessage(event.detail, "messagebox");});
+    document.addEventListener("recievedMessage", (event) => {showMessage(event.detail, "messagebox");}); // Add listener to show status messages / errors
 });

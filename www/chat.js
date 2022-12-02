@@ -1,6 +1,8 @@
+
+// Converts a message to a div and adds it
 function addMessage(msg){
     const dmSource = msg.type == msgtype.PRIV_MSG ? "@"+msg.to : "";
-    const msgDiv = `<div class='message'>${formatUnix(msg.timestamp)} ${msg.who}: ${dmSource} ${msg.msg}</div>\n`;
+    const msgDiv = `<div class='message'>${formatUnix(msg.timestamp)} ${msg.from}: ${dmSource} ${msg.msg}</div>\n`;
     document.getElementById("chat").innerHTML += msgDiv;
 }
 
@@ -25,7 +27,7 @@ window.addEventListener("load", () => {
         const msg = event.detail;
 
         if(msg.type == msgtype.PUB_MSG || msg.type == msgtype.PRIV_MSG){
-            addMessage(message);
+            addMessage(msg);
         }
     });
 });

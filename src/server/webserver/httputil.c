@@ -41,11 +41,11 @@ char* api_msg_to_json(struct api_msg* msg){
             sprintf(json, "{\"type\": %d, \"status\": \"%s\"}", msg->type, msg->status.statusmsg);
             break;
         case PRIV_MSG:
-            sprintf(json, "{\"type\": %d, \"timestamp\": %ld, \"msg\":\"%s\", from:\"%s\", to:\"%s\"}", 
+            sprintf(json, "{\"type\": %d, \"timestamp\": %ld, \"msg\":\"%s\", \"from\":\"%s\", to:\"%s\"}", 
             msg->type, msg->priv_msg.timestamp, msg->priv_msg.msg, msg->priv_msg.from, msg->priv_msg.to);
             break;
         case PUB_MSG:
-            sprintf(json, "{\"type\": %d, \"timestamp\": %ld, \"msg\":\"%s\", from:\"%s\"}", 
+            sprintf(json, "{\"type\": %d, \"timestamp\": %ld, \"msg\":\"%s\", \"from\":\"%s\"}", 
             msg->type, msg->pub_msg.timestamp, msg->pub_msg.msg, msg->pub_msg.from);
             break;
         case WHO:
