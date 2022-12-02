@@ -131,8 +131,6 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
         return -1;
     }
 
-    printf("Payload %ld\n", payloadLen);
-
     // Unmask data
     if(mask){
         uint8_t* maskData = data;
