@@ -27,7 +27,7 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
   msg->cert = NULL;
 
   // Recieve additional data
-  if(msg->encPrivKeyLen){ // TODO: Security, this could allocate an arbitrary amount of data. Not good!
+  if(msg->encPrivKeyLen){
     msg->encPrivKey = malloc(msg->encPrivKeyLen);
     res = ssl_block_read(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
     if(res <= 0) return -1;

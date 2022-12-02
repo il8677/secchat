@@ -7,7 +7,7 @@
 #include <string.h>
 #include <openssl/rsa.h>
 
-// TODO: Use sha-2 and salt (do in another function, this function and sha-1 are needed for web)
+// TODO: Use salt
 // https://www.openssl.org/docs/man1.1.1/man3/SHA512_Init.html
 void crypto_hash(char* data, uint32_t len, unsigned char* output){
     SHA_CTX ctx;

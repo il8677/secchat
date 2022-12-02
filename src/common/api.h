@@ -44,8 +44,6 @@ typedef signed long timestamp_t;
 
 /// @brief The struct of data to be sent over the wire
 struct api_msg {
-  // TODO: Auth info
-
   enum msg_type_t type;
 
   char errcode;
