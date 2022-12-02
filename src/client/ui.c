@@ -68,10 +68,6 @@ void handle_privmsg_send(X509* selfcert, X509* other, struct api_msg* msg){
   // The message is stored in frommsg, encrypt and store. The recipient is already set
   crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, other, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg)+1);
   crypto_RSA_pubkey_encrypt(msg->priv_msg.frommsg, selfcert, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg)+1);
-
-    char* decrypted = crypto_RSA_privkey_decrypt(d_privkey, msg->priv_msg.frommsg);
-    printf("Outgoing private message %s\n", decrypted);
-    free(decrypted); 
 }
 
 int input_handle_privmsg(Node* certList, Node* msgQueue, X509* selfcert, struct api_msg* apimsg, char* p) {
