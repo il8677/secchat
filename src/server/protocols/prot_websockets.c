@@ -4,38 +4,49 @@
 #include <endian.h>
 
 #include "../worker/workerapi.h"
+#include "../webserver/httputil.h"
 #include "../../../vendor/ssl-nonblock.h"
 #include "../../util/crypto.h"
 
-int sendFrame(struct api_state* state, uint8_t* payload, uint64_t length, char opcode){
-    char* data = malloc(length + 10);
-    memset(data, 0, length + 10);
-    data[0] = opcode | 0x8; // opcode and fin
+#define MAX_HEADER_SIZE 14
 
-    char* payloadLoc = data + 2;
+int send_header(struct api_state* state, uint64_t length, char opcode){
+    uint8_t header[MAX_HEADER_SIZE];
+    uint8_t headerLen = 0;
+    memset(header, 0, MAX_HEADER_SIZE);
 
+    header[headerLen++] = opcode | 0x80; // Opcode and fin
+
+    // Fill in length
     uint8_t len1;
-
+    headerLen += 1;
     if(length <= 125) len1 = length;
     else if (length <= UINT32_MAX) {
         len1 = 126;
-        *(uint32_t*)(data+2) = (uint32_t)length;
-        payloadLoc += 4;
+        *(uint32_t*)(header+2) = htonl((uint32_t)length);
+        headerLen += 4;
     }
     else {
         len1 = 127;
-        *(uint64_t*)(data+2) = (uint64_t)length;
-        payloadLoc += 8;
+        *(uint64_t*)(header+2) = htobe32((uint64_t)length);
+        headerLen += 8;
     }
 
-    data[1] = len1;
+    header[1] = len1;
 
-    memcpy(payloadLoc, payload, length);
+    for(int i = 0; i < headerLen; i++){
+        printf("%x ", header[i]);
+    }
+    printf("\n");
 
-    // TODO: More elegant / safe way to calculate length
-    int res = ssl_block_write(state->ssl, state->fd, data, payloadLoc + length - data);
+    return ssl_block_write(state->ssl, state->fd, header, headerLen);
+}
 
-    free(data);
+int send_frame(struct api_state* state, uint8_t* payload, uint64_t length, char opcode){
+    int res = send_header(state, length, opcode);
+
+    if(res <= 0) return -1;
+    res = ssl_block_write(state->ssl, state->fd, payload, length);
 
     return res > 0 ? 0 : -1;
 }
@@ -67,6 +78,11 @@ int protwb_notify(struct worker_state* state){
 }
 
 int protwb_send(struct worker_state* state, struct api_msg* msg){
+    char* json = api_msg_to_json(msg);
+
+    printf("Sending %s\n", json);
+    send_frame(&state->api, (unsigned char*)json, strlen(json), 0x1);
+    free(json);
     return 1;
 }
 
@@ -130,7 +146,7 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
     switch (opcode)
     {
     case 0x9: // Ping
-        return sendFrame(state, data, payloadLen, 0xA);
+        return send_frame(state, data, payloadLen, 0xA);
         break;
     case 0x2:
         // Check if data is correct size

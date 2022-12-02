@@ -279,6 +279,5 @@ int execute_request(struct worker_state* state,
     API_PRINT_MSG("response", responseData);
     state->apifuncs.send(state, &responseData);
   }
-
   return res;
 }

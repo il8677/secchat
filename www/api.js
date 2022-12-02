@@ -109,6 +109,9 @@ function createWebsocket(){
     ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
 
+        console.log("Data recieved");
+        console.log(msg);
+
         document.dispatchEvent(new CustomEvent("recievedMessage", {detail: msg}));
     }
 
