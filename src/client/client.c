@@ -97,7 +97,7 @@ static int client_process_command(struct client_state* state) {
       else errcode = ERR_COMMAND_ERROR;
     }
   }
-  else errcode = input_handle_pubmsg(&apimsg, p);
+  else errcode = input_handle_pubmsg(state->privkey , &apimsg, p);
   
   if (errcode == ERR_COMMAND_ERROR){
     printf("error: unknown command %s\n", input);
@@ -425,7 +425,7 @@ int main(int argc, char **argv) {
   SSL_CTX_load_verify_locations(state.api.ctx, "ttpkeys/ca-cert.pem", NULL);
   SSL_set_verify(state.api.ssl, SSL_VERIFY_PEER, NULL);
   set_nonblock(fd);
-
+    
   int res;
   // SSL handshake
   if((res = ssl_block_connect(state.api.ssl, state.api.fd)) != 1){

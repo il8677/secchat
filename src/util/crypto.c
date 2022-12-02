@@ -127,3 +127,19 @@ char* crypto_RSA_privkey_decrypt(RSA* key, const char* msg){
 
     return outbuf;
 }
+
+// Taken from the provided examples
+void crypto_RSA_sign(RSA* key, const char* msg, uint16_t msglen, unsigned char* output) {
+    EVP_PKEY *evpKey = EVP_PKEY_new();
+    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+    unsigned int siglen;
+
+    EVP_PKEY_assign_RSA(evpKey, key);
+    EVP_SignInit(ctx, EVP_sha1());
+    EVP_SignUpdate(ctx, msg, msglen);
+    EVP_SignFinal(ctx, output, &siglen, evpKey);
+
+    //cleanup
+    EVP_PKEY_free(evpKey);
+    EVP_MD_CTX_free(ctx);
+}

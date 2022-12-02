@@ -70,6 +70,11 @@ struct api_msg {
       char from[MAX_USER_LEN];
       
       char msg[MAX_MSG_LEN];
+
+      X509* cert;
+
+      char hash[MAX_ENCRYPT_LEN];
+      
     } pub_msg;
 
     struct {
