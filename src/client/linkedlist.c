@@ -6,11 +6,16 @@
 
 #include "linkedList.h"
 
+void node_free(Node* node){
+    free(node->key);    
+    free(node);
+}
+
 void list_free(Node* head) {
     Node* last = head;
     while (head->next != NULL) {
         head = head->next;
-        free(last);
+        node_free(last);
         last = head;
     }
     free(head);
@@ -18,7 +23,7 @@ void list_free(Node* head) {
 
 void list_add(Node* head, const char* key, void* data, uint16_t datalen) {
     struct Node *node = malloc(sizeof(struct Node)+datalen);
-    strcpy(node->key, key);
+    node->key = strdup(key);
     node->next = NULL;
     memcpy(node->contents, data, datalen);
     
@@ -35,7 +40,7 @@ void list_del(Node* head, const char* key) {
             Node* temp;
             temp = head->next;
             head->next = head->next->next;
-            free(temp);
+            node_free(temp);
         }
         head = head->next;
     }
@@ -49,7 +54,7 @@ void list_exec(Node* head, const char* key, list_cb_t cb, void* userData, char d
                 Node* temp;
                 temp = head->next;
                 head->next = head->next->next;
-                free(temp);
+                node_free(temp);
             }
         }
         head = head->next;
