@@ -44,6 +44,22 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
   return 1;
 }
 
+static int prep_msg_share(struct worker_state* state, struct api_msg* msg){
+  // Attach sender cert if it wasn't yet sent
+  if(list_add(state->sentCerts, msg->priv_msg.from, NULL, 0) == 0){  
+    db_add_cert(&state->dbConn, msg, msg->priv_msg.from);
+  }
+
+  return state->apifuncs.send(&state->api, msg) == 1 ? 0 : -1;
+}
+
+int notify(struct worker_state* state) {
+  db_get_messages(&state->dbConn, state, state->uid, prep_msg_share, &state->lastviewed);
+
+  return 0;
+};
+
+
 /**
  * @brief         Notifies server that the worker received a new message
  *                from the client.
@@ -96,6 +112,8 @@ int worker_state_init(struct worker_state* state, int connfd,
 
   SSL_use_certificate_file(state->api.ssl, "serverkeys/cert.pem", SSL_FILETYPE_PEM);
   SSL_use_PrivateKey_file(state->api.ssl, "serverkeys/priv.pem", SSL_FILETYPE_PEM);
+
+  state->sentCerts = list_init();
 
   return 0;
 }
@@ -173,6 +191,8 @@ int execute_request(struct worker_state* state,
         doResponse = 1;
         responseData.type = KEY;
         memcpy(responseData.key.who, msg->key.who, MAX_USER_LEN);
+
+        list_add(state->sentCerts, msg->key.who, NULL, 0);        
       }
       break;
     case PRIV_MSG:

@@ -14,7 +14,9 @@ struct Node {
 Node* list_init();
 void list_free(Node* head);
 
-void list_add(Node* head, const char* key, void* data, uint16_t datalen);
+/// @brief Add to a linked list
+/// @return 1 if failed
+int list_add(Node* head, const char* key, void* data, uint16_t datalen);
 void list_del(Node* head, const char* key);
 
 /// @brief Executes a callback across a list

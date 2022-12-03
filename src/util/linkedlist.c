@@ -21,17 +21,19 @@ void list_free(Node* head) {
     free(head);
 }
 
-void list_add(Node* head, const char* key, void* data, uint16_t datalen) {
+int list_add(Node* head, const char* key, void* data, uint16_t datalen) {
     struct Node *node = malloc(sizeof(struct Node)+datalen);
     node->key = strdup(key);
     node->next = NULL;
     memcpy(node->contents, data, datalen);
     
     while(head->next != NULL) {
-        if(head->key != NULL && strcmp(key, head->key) == 0) return; // Don't insert something that already exists
+        if(head->key != NULL && strcmp(key, head->key) == 0) return 1; // Don't insert something that already exists
         head = head->next;
     }
     head->next = node;
+
+    return 0;
 }
 
 void list_del(Node* head, const char* key) {

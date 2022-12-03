@@ -170,39 +170,6 @@ static void formatTime(char* buffer, int size, timestamp_t timestamp){
   strftime(buffer, size, "%Y-%m-%d %H:%M:%S", tm_info);
 }
 
-static void privMsg(struct client_state* state, const struct api_msg * msg){
-  char buffer[26];
-  formatTime(buffer, 26, msg->priv_msg.timestamp);
-  
-  char* unencrpyted = crypto_RSA_privkey_decrypt(state->privkey, msg->priv_msg.frommsg);
-
-  //never print more than the respective maximum lengths.
-  printf("%s %.*s: @%.*s %.*s\n", buffer, MAX_USER_LEN, 
-    msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, unencrpyted);
-  
-  free(unencrpyted);
-}
-
-static void pubMsg(const struct api_msg * msg){
-  char buffer[26];
-  char messagebuf[MAX_MSG_LEN];
-  char sigbuf[MAX_ENCRYPT_LEN];  
-
-  strcpy(messagebuf, msg->pub_msg.msg);
-  strcpy(sigbuf, msg->pub_msg.signature);
-
-  formatTime(buffer, 26, msg->priv_msg.timestamp);
-
-  // crypto_RSA_verify(msg->pub_msg.cert, (unsigned char*)sigbuf, strlen(sigbuf), messagebuf, strlen(messagebuf)); 
-
-  //never print more than the respective maximum lengths.
-  printf("%s %s: %s\n", buffer,
-  msg->pub_msg.from, msg->pub_msg.msg);
-}
-static void who(const struct api_msg * msg){
-  printf("users:\n%s\n", msg->who.users);
-}
-
 // Data to pass into callback
 struct callback_data_in { X509* other; struct client_state* state; };
 
@@ -217,7 +184,7 @@ static void list_msg_send_callback(Node* n, void* usr){
   api_send(&data->state->api, msg);
 }
 
-static int handle_key(struct client_state* state, const struct api_msg* msg){
+static int handle_attached_key(struct client_state* state, const struct api_msg* msg){
   if(!msg->certLen) return ERR_INVALID_API_MSG;
   // TODO: Verify cert authenticity (make sure the who matches the cert entry, and the CA signed it)
 
@@ -234,6 +201,56 @@ static int handle_key(struct client_state* state, const struct api_msg* msg){
   list_exec(state->head_msg_queue, msg->key.who, list_msg_send_callback, &data, 1);
 
   return 0;  
+}
+
+
+// Store the cert attatched to a message
+static void cacheAttatchedCert(struct client_state* state, const struct api_msg* msg){
+  handle_attached_key(state, msg);
+}
+
+// Verifies an incoming message
+static char verifyMessage(struct client_state* state, const struct api_msg* msg, const char* msgtext){
+  Node* n = list_find(state->head_certs, msg->priv_msg.from);
+
+  if(n == NULL) return 0;
+
+  X509* cert = (X509*)n->contents;
+  return crypto_RSA_verify(cert, msgtext, strlen(msgtext), msg->priv_msg.signature, MAX_ENCRYPT_LEN);
+}
+
+static void privMsg(struct client_state* state, const struct api_msg * msg){
+  char buffer[26];
+  formatTime(buffer, 26, msg->priv_msg.timestamp);
+
+  cacheAttatchedCert(state, msg);
+
+  char* unencrpyted = crypto_RSA_privkey_decrypt(state->privkey, msg->priv_msg.frommsg);
+
+  if(!verifyMessage(state, msg, unencrpyted)) printf("Unsigned! ");
+
+  //never print more than the respective maximum lengths.
+  printf("%s %.*s: @%.*s %.*s\n", buffer, MAX_USER_LEN, 
+    msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, unencrpyted);
+  
+  free(unencrpyted);
+}
+
+static void pubMsg(struct client_state* state, const struct api_msg * msg){
+  char buffer[26];
+
+  cacheAttatchedCert(state, msg);
+
+  formatTime(buffer, 26, msg->priv_msg.timestamp);
+
+  if(!verifyMessage(state, msg, msg->pub_msg.msg)) printf("Unsigned! ");
+
+  //never print more than the respective maximum lengths.
+  printf("%s %s: %s\n", buffer,
+  msg->pub_msg.from, msg->pub_msg.msg);
+}
+static void who(const struct api_msg * msg){
+  printf("users:\n%s\n", msg->who.users);
 }
 
 static void loginAck(const struct api_msg* msg, struct client_state* state){
@@ -279,7 +296,7 @@ static int execute_request(
       privMsg(state, msg);
       break;
     case PUB_MSG:
-      pubMsg(msg);
+      pubMsg(state, msg);
       break;
     case WHO:
       who(msg);
@@ -290,7 +307,7 @@ static int execute_request(
       loginAck(msg, state);
       break;
     case KEY:
-      handle_key(state, msg);  
+      handle_attached_key(state, msg);  
       break;
     default:
       printf("Some error happened %d\n", msg->type);

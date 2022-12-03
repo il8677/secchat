@@ -4,6 +4,7 @@
 #include "../../common/api.h"
 #include "../apicallbacks.h"
 #include "../db.h"
+#include "../../util/linkedlist.h"
 
 struct worker_state {
   struct api_state api;
@@ -17,11 +18,15 @@ struct worker_state {
   int uid;  // Potential attack surface
   timestamp_t lastviewed;
 
+  Node* sentCerts; // The certs the client should have
+
   struct db_state dbConn;
 
   struct api_callbacks apifuncs;
 };
 
+/// @brief Notifies worker of new messages
+int notify(struct worker_state* state);
 
 /**
  * @brief Initialize struct worker_state before starting processing requests.

@@ -94,12 +94,12 @@ int db_get_messages(struct db_state* state, struct worker_state* astate, int uid
 
     // Big statement, creates a union between the public messages, private messages where the user is the sender, and private messages where the user is the recipient,
     // selecting for the appropriate encrypted msg out of the pair.
-    char* query = sqlite3_mprintf("SELECT q1.id, q1.timestamp, su.username, ru.username, q1.msg FROM \
-        (SELECT messages.id, timestamp, sender, NULL AS recipient, msg FROM pub_messages LEFT JOIN messages ON messages.id == pub_messages.id \
+    char* query = sqlite3_mprintf("SELECT q1.id, q1.signature, q1.timestamp, su.username, ru.username, q1.msg FROM \
+        (SELECT messages.id, messages.signature, timestamp, sender, NULL AS recipient, msg FROM pub_messages LEFT JOIN messages ON messages.id == pub_messages.id \
         UNION ALL \
-        SELECT messages.id, timestamp, sender, recipient, sendermsg FROM priv_messages LEFT JOIN messages ON messages.id == priv_messages.id WHERE sender == %d \
+        SELECT messages.id, messages.signature, timestamp, sender, recipient, sendermsg FROM priv_messages LEFT JOIN messages ON messages.id == priv_messages.id WHERE sender == %d \
         UNION ALL \
-        SELECT messages.id, timestamp, sender, recipient, recipientmsg FROM priv_messages LEFT JOIN messages ON messages.id == priv_messages.id WHERE recipient == %d) AS q1 \
+        SELECT messages.id, messages.signature, timestamp, sender, recipient, recipientmsg FROM priv_messages LEFT JOIN messages ON messages.id == priv_messages.id WHERE recipient == %d) AS q1 \
         LEFT JOIN users AS su ON su.id == q1.sender \
         LEFT JOIN users AS ru ON ru.id == q1.recipient \
         WHERE q1.id > %i;", 
@@ -121,20 +121,21 @@ int db_get_messages(struct db_state* state, struct worker_state* astate, int uid
         *lastviewed = sqlite3_column_int64(statement, 0);
         
         // These do NOT have to be freed (they are freed by finalize)
-        timestamp_t timestamp = sqlite3_column_int64(statement, 1);
-        const char* sender = (const char*)sqlite3_column_text(statement, 2);
-        const char* recipient = (const char*)sqlite3_column_text(statement, 3);
+        const char* signature = sqlite3_column_blob(statement, 1);
+        timestamp_t timestamp = sqlite3_column_int64(statement, 2);
+        const char* sender = (const char*)sqlite3_column_text(statement, 3);
+        const char* recipient = (const char*)sqlite3_column_text(statement, 4);
 
         const unsigned char* msg;
         if(recipient == NULL){
-            msg = sqlite3_column_text(statement, 4);
+            msg = sqlite3_column_text(statement, 5);
             // string should be of correct length, but just to be safe
             strncpy(row.pub_msg.msg, (const char*)msg, MAX_MSG_LEN);
             row.pub_msg.msg[MAX_MSG_LEN-1] = '\0';
             
             row.type = PUB_MSG;
         }else{
-            msg = sqlite3_column_blob(statement, 4);
+            msg = sqlite3_column_blob(statement, 5);
             memcpy(row.priv_msg.frommsg, msg, MAX_ENCRYPT_LEN);
             strncpy(row.priv_msg.to, recipient, MAX_USER_LEN);
             row.priv_msg.to[MAX_USER_LEN-1] = '\0';
@@ -147,6 +148,8 @@ int db_get_messages(struct db_state* state, struct worker_state* astate, int uid
 
         strncpy(row.priv_msg.from, sender, MAX_USER_LEN);
         row.priv_msg.from[MAX_USER_LEN-1] = '\0';
+
+        memcpy(row.pub_msg.signature, signature, MAX_ENCRYPT_LEN);
 
         if((retvalue = cb(astate, &row))) goto cleanup;
 
