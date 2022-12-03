@@ -102,7 +102,7 @@ int input_handle_privmsg(Node* certList, Node* msgQueue, RSA* key, X509* selfcer
     // Wipe msg so it isn't leaked to server
     memset(apimsg->priv_msg.frommsg, 0, MAX_MSG_LEN);
   }else{
-    handle_privmsg_send(key, selfcert, (X509*)cert->contents, apimsg);
+    handle_privmsg_send(key, selfcert, *(X509**)cert->contents, apimsg);
   }
 
   return 0;
