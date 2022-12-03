@@ -12,6 +12,17 @@
 #include "../../../vendor/ssl-nonblock.h"
 #include "workerapi.h"
 
+static int prep_msg_share(struct worker_state* state, struct api_msg* msg){
+  return state->apifuncs.send(&state->api, msg) == 1 ? 0 : -1;
+}
+
+int notify(struct worker_state* state) {
+  db_get_messages(&state->dbConn, state, state->uid, prep_msg_share, &state->lastviewed);
+
+  return 0;
+};
+
+
 static int handle_s2w_read(struct worker_state* state) {
   char buf[256];
   ssize_t r;
@@ -32,7 +43,7 @@ static int handle_s2w_read(struct worker_state* state) {
   }
 
   /* notify our client */
-  if (state->apifuncs.handle_notification(state) != 0) return -1;
+  if (notify(state) != 0) return -1;
 
   return 0;
 }

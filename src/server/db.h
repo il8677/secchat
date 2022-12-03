@@ -6,6 +6,8 @@
 #include <sqlite3.h>
 #include "../common/api.h"
 
+struct worker_state;
+
 struct db_state{
     sqlite3* db;
 };
@@ -27,7 +29,7 @@ void db_state_free(struct db_state* state);
 /// @param uid the user id to get messages for
 /// @param cb the callback to send api_msgs to, returns 0 for no error
 /// @return 0 if OK, error code otherwise
-int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*), timestamp_t* lastviewed);
+int db_get_messages(struct db_state* state, struct worker_state* astate, int uid, int(*cb) (struct worker_state*, struct api_msg*), timestamp_t* lastviewed);
 
 /// @brief Adds a privkey to an apimsg
 /// @param state db state

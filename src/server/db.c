@@ -90,7 +90,7 @@ void db_create(struct db_state* state){
 }
 
 // TODO: Cleanup this function
-int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*), timestamp_t* lastviewed){
+int db_get_messages(struct db_state* state, struct worker_state* astate, int uid, int(*cb) (struct worker_state*, struct api_msg*), timestamp_t* lastviewed){
 
     // Big statement, creates a union between the public messages, private messages where the user is the sender, and private messages where the user is the recipient,
     // selecting for the appropriate encrypted msg out of the pair.

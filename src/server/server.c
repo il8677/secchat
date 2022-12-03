@@ -358,12 +358,12 @@ static int handle_incoming(struct server_state* state) {
   }
   /* handle ready file descriptors */
   if (FD_ISSET(state->sockfd, &readfds)) {
-    if (handle_connection(state, state->sockfd, (struct api_callbacks){protc_handle_s2w, api_send, api_recv}) != 0) success = 0;
+    if (handle_connection(state, state->sockfd, (struct api_callbacks){api_send, api_recv}) != 0) success = 0;
   }
   
   if (FD_ISSET(state->httpsock, &readfds)){
     printf("Incoming https connection\n");
-    if (handle_connection(state, state->httpsock, (struct api_callbacks){protht_notify, protht_send, protht_recv}) != 0) success = 0;
+    if (handle_connection(state, state->httpsock, (struct api_callbacks){protht_send, protht_recv}) != 0) success = 0;
   }
 
   for (i = 0; i < MAX_CONNECTIONS; i++) {
