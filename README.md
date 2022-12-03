@@ -10,22 +10,22 @@ The client starts with seperating the command from the message in "client_proces
 Depending on the command different steps are taken.
 
 -   ### register (input_handle_register| ui.c)    TODO: do we use salt?
-    When register is called we first check if the username has already been taken or not and if the password and/or the username is valid (not empty). We then hash the password, request a certificate from the CA and generate a private key. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. 
+    When register is called we first check if the username has already been taken or not and if the password and/or the username is valid (not empty). We then hash the password, request a certificate from the CA and generate a private key. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server. (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it so whatever.) 
 
 -   ### login  (input_handle_login| ui.c)     TODO: salt? verify that the private key is actually correct w certificate?
-    After login is called we hash the password and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and verify the certificate with the key. (loginAck| client.c) 
+    After login is called we hash the password and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and verify the certificate with the key. This ensures that we have the same keypair every time even when logging in from different devices. (loginAck| client.c) 
     
--   ### public message (input_handle_pubmsg| ui.c)
-    When sending a public message we use RSA digital signatures to make sure that what we send is not tempered with during transmission. We first compute the hash of the message and sign it with the sender's (our own) private key. Then we send the encrypted hash and the message over the wire where the receiving end computes the hash of the message and verifies the message by decrypting the signature using the senders public key. If the computed hash and the decryption are equal then the signature is correct and the message had not been tampered with.
-
 -   ### private message (input_handle_privmsg| ui.c)
-    To send a private message we have to get the public key of the receipient so we can encode the message (using RSA). We first look through our linked list containing keys. If the key is already in our linked list we proceed to encrypt the message and send it to the server. If the key is not found in the linked list we request the key from the server and put the to be transmitted message in a queue (linked list) so we can send the message whenever we receive the key. When we receive the key (execute_request, handle_key| client.c) the authenticity of the certificate is verified. The key is then added to the list of keys and we go through the queue to see if there is a request we can fullfil now with the key. The message is then send to the server in twofold. One message is encrypted with the recipients public key and one with our own public key.     
+    To send a private message we have to get the public key of the receipient so we can encode the message (using RSA). We first look through our linked list containing keys. If the key is not found in the linked list we request the key from the server and put the to be transmitted message in a queue (linked list) so we can send the message whenever we receive the key. When we receive the key (execute_request, handle_key| client.c) the authenticity of the certificate is verified. The key is then added to the list of keys and we go through the queue to see if there is a request we can fullfil now with the key. Continuing this, regardless of whether we already had the key or just got the key from the server we sign the message(hash and encrypt with our private key), encrypt s copy of the message with the recipients public key and a copy of the message with our own public key. These messages and a signed version of the message are then send to the server. 
 
--   ### users ?? dont think we need this here
+-   ### public message (input_handle_pubmsg| ui.c)
+    When sending a public message we use RSA digital signatures to make sure that what we send is not tampered with during transmission. We first compute the hash of the message and sign it with the sender's (our own) private key. Then we send the encrypted hash and the message over the wire where the receiving end computes the hash of the message and verifies the message by decrypting the signature using the senders public key. The server adds the certificate of the sender to the message and after checking for validity the recipient can extract the key. If the computed hash and the decryption of the signature are equal then the signature is correct and the message had not been tampered with.
 
--   ### exit ?? dont think we need this here
+-   ### users 
+    No cryptography happens for the user call, we just set the message type and send it.
 
- The structs are then sent to the socket.
+-   ### exit 
+    No cryptography happens for the exit call either, we just set the message type and send it.
 
 ## server and worker
 The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify the request. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track with a block of shared memory, which the workers accesses when building the response to a /users command.
@@ -48,7 +48,7 @@ The server is designed to be protocol agnostic. The API to interact with the dat
                                                     ---------------
 
 ## wrapping up
-If a message was recieved, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then displays the correct message.   
+If a message was recieved, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then decrypts and displays the correct message. Keys are handled differently as described in public and private messaging.   
 
 # messages
 ## message types
@@ -58,9 +58,9 @@ The message has a statusmsg field containing a string sent by the server.
 ### error
 The message has an errcode field containing an errorcode sent by the server. This is processed by the client in the function error (client.c) where the appropriate error message is printed. Error codes are defined in errcodes.h 
 ### priv_msg
-The message has a timestamp (unix), a msg field, a from field, and a to field. 
+The message has a timestamp (unix), a from message field (encrypted with the senders public key), a from field, a to message field (encrypted with the recipients public key), a to field and a signature field(hashed and then signed with private key). 
 ### pub_msg
-Identical to priv_msg without a to field.
+Identical to priv_msg without a to field and only containing one message (unencrypted), the signature field is also hashed and signed with a private key to ensure that the message is from the actual sender and has not been tampered with.
 ### who
 The message contains a string with a list of all users. 
 ### login / register
@@ -86,6 +86,10 @@ The struct needs to be as safe as we created it ourselves, so null termination o
 # client
 ## message validity
 When parsing the input we check if the the command is valid, and the message is not too long. We also check if the amount of parameters given are correct and if they are not too long.
+
+## cryptography
+
+### message encryption
 
 ## displaying messages
 When displaying the messages we make sure to never print more characters than the respective max length.
