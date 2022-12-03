@@ -166,9 +166,10 @@ static void status(const struct api_msg * msg){
 
 static void formatTime(char* buffer, int size, timestamp_t timestamp){
   struct tm* tm_info;
-  tm_info = localtime(&timestamp);
+  tm_info = localtime(&timestamp); //TODO: somewhere here is a memory leak :)
 
   strftime(buffer, size, "%Y-%m-%d %H:%M:%S", tm_info);
+
 }
 
 // Data to pass into callback
@@ -200,7 +201,6 @@ static int handle_attached_key(struct client_state* state, const struct api_msg*
 
   // Send queued messages
   list_exec(state->head_msg_queue, msg->key.who, list_msg_send_callback, &data, 1);
-
   return 0;  
 }
 
@@ -250,6 +250,7 @@ static void pubMsg(struct client_state* state, const struct api_msg * msg){
   //never print more than the respective maximum lengths.
   printf("%s %s: %s\n", buffer,
   msg->pub_msg.from, msg->pub_msg.msg);
+  
 }
 static void who(const struct api_msg * msg){
   printf("users:\n%s\n", msg->who.users);
@@ -403,7 +404,7 @@ static int client_state_init(struct client_state* state) {
 }
 
 void list_clean_cert(Node* n, void* usr){
-  X509_free((X509*)n->contents);
+  X509_free(((X509**)n->contents)[0]); //TODO: memory leak
 }
 
 static void client_state_free(struct client_state* state) {

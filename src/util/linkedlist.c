@@ -1,14 +1,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <openssl/ssl.h>
 #include <unistd.h>
+#include <openssl/rsa.h>
 #include <stdint.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+
 
 #include "linkedList.h"
 
 void node_free(Node* node){
-    free(node->key);    
+    free(node->key);
     free(node);
+    
 }
 
 void list_free(Node* head) {

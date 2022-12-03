@@ -1,6 +1,8 @@
 #ifndef _LINKEDLIST_H_
 #define _LINKEDLIST_H_
 
+#include <stdbool.h>
+
 typedef struct Node Node;
 typedef void(*list_cb_t)(Node* node, void* usr);
 
