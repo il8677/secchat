@@ -23,9 +23,10 @@ void list_free(Node* head) {
 
 int list_add(Node* head, const char* key, void* data, uint16_t datalen) {
     while(head->next != NULL) {
-        if(head->key != NULL && strcmp(key, head->key) == 0) return 1; // Don't insert something that already exists
+        if( strcmp(key, head->next->key) == 0) return 1; // Don't insert something that already exists
         head = head->next;
     }
+    
     struct Node *node = malloc(sizeof(struct Node)+datalen);
     node->key = strdup(key);
     node->next = NULL;
