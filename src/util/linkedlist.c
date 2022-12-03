@@ -18,7 +18,7 @@ void list_free(Node* head) {
         node_free(last);
         last = head;
     }
-    free(head);
+    node_free(head);
 }
 
 int list_add(Node* head, const char* key, void* data, uint16_t datalen) {
