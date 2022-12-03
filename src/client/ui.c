@@ -62,15 +62,16 @@ int message_too_long(char* msg) {
   return strlen(msg)+1 > MAX_MSG_LEN;  
 }
 
-void handle_privmsg_send(X509* selfcert, X509* other, struct api_msg* msg){
+void handle_privmsg_send(RSA* key, X509* selfcert, X509* other, struct api_msg* msg){
   msg->type = PRIV_MSG;
 
-  // The message is stored in frommsg, encrypt and store. The recipient is already set
+  // The message is stored in frommsg, sign, encrypt and store. The recipient is already set
+  crypto_RSA_sign(key, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg), (unsigned char*)msg->priv_msg.signature);
   crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, other, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg)+1);
   crypto_RSA_pubkey_encrypt(msg->priv_msg.frommsg, selfcert, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg)+1);
 }
 
-int input_handle_privmsg(Node* certList, Node* msgQueue, X509* selfcert, struct api_msg* apimsg, char* p) {
+int input_handle_privmsg(Node* certList, Node* msgQueue, RSA* key, X509* selfcert, struct api_msg* apimsg, char* p) {
   if(selfcert == NULL) return ERR_NO_USER;
   
   p++;
@@ -101,7 +102,7 @@ int input_handle_privmsg(Node* certList, Node* msgQueue, X509* selfcert, struct 
     // Wipe msg so it isn't leaked to server
     memset(apimsg->priv_msg.frommsg, 0, MAX_MSG_LEN);
   }else{
-    handle_privmsg_send(selfcert, (X509*)cert->contents, apimsg);
+    handle_privmsg_send(key, selfcert, (X509*)cert->contents, apimsg);
   }
 
   return 0;
@@ -169,7 +170,7 @@ int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout) {
   strncpy(apimsg->reg.username, username, MAX_USER_LEN);
   crypto_hash(password, strlen(password), (unsigned char*)apimsg->login.password);
 
-  crypto_get_user_auth(username, password, &apimsg->encPrivKey, &apimsg->cert);
+  crypto_get_user_auth(username, &apimsg->encPrivKey, &apimsg->cert);
   char* enc = crypto_aes_encrypt(apimsg->encPrivKey, strlen(apimsg->encPrivKey)+1, password, 1, &apimsg->encPrivKeyLen);
   free(apimsg->encPrivKey);
   apimsg->encPrivKey= enc;
@@ -191,10 +192,8 @@ int input_handle_pubmsg(RSA* key, struct api_msg* apimsg, char* p) {
   
   apimsg->type = PUB_MSG;
   strncpy(apimsg->pub_msg.msg, p_start, MAX_MSG_LEN);
-  //TODO: if hashing is already being done then this is zombie code
-  // crypto_hash(apimsg->pub_msg.msg,strlen(apimsg->pub_msg.msg), (unsigned char*)apimsg->pub_msg.hash);
-  // printf("HASH:%s\n", apimsg->pub_msg.hash);
-  crypto_RSA_sign(key, apimsg->pub_msg.hash, strlen(apimsg->pub_msg.hash), (unsigned char*)apimsg->pub_msg.hash); 
+
+  crypto_RSA_sign(key, p_start, strlen(p_start), (unsigned char*)apimsg->pub_msg.signature); 
 
   return 0;
 }

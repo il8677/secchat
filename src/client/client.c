@@ -84,7 +84,7 @@ static int client_process_command(struct client_state* state) {
   char *p_end = input + strlen(input);
   while (p < p_end && isspace(*p)) p++;
   
-  if (p[0] == '@') errcode = input_handle_privmsg(state->head_certs, state->head_msg_queue, state->cert, &apimsg, p);
+  if (p[0] == '@') errcode = input_handle_privmsg(state->head_certs, state->head_msg_queue, state->privkey, state->cert, &apimsg, p);
   else if (p[0] == '/') {                      
     p++;
     if (strlen(p) == 0 || p[0] == ' ') errcode = ERR_COMMAND_ERROR;
@@ -193,7 +193,7 @@ static void pubMsg(const struct api_msg * msg){
 
   formatTime(buffer, 26, msg->priv_msg.timestamp);
 
-  crypto_RSA_verify(msg->pub_msg.cert, (unsigned char*)sigbuf, strlen(sigbuf), messagebuf, strlen(messagebuf)); 
+  // crypto_RSA_verify(msg->pub_msg.cert, (unsigned char*)sigbuf, strlen(sigbuf), messagebuf, strlen(messagebuf)); 
 
   //never print more than the respective maximum lengths.
   printf("%s %s: %s\n", buffer,
@@ -212,7 +212,7 @@ static void list_msg_send_callback(Node* n, void* usr){
   struct api_msg* msg = (struct api_msg*)n->contents;
   struct callback_data_in* data = usr;
 
-  handle_privmsg_send(data->state->cert, data->other, msg);
+  handle_privmsg_send(data->state->privkey, data->state->cert, data->other, msg);
 
   api_send(&data->state->api, msg);
 }

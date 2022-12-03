@@ -48,34 +48,39 @@ struct api_msg {
 
   char errcode;
 
+  // The following are information about extra data that should be transmitted.
+  // These weren't implemented as static fields since the length is indeterminate
+  // and it's pretty wasteful to have ~3KB of overhead when you don't always need it
+  // So these "trailers" are sent/recieved after the api_msg is sent/recieved.
+
+  // Length of attached data (if any)
+  uint16_t encPrivKeyLen;
+  uint16_t certLen;
+
   union {
     struct {
       char statusmsg[MAX_MSG_LEN];
     } status;
 
     struct {
+      char signature[MAX_ENCRYPT_LEN];
       timestamp_t timestamp;
 
       char from[MAX_USER_LEN];
       char to[MAX_USER_LEN];
       
-      char frommsg[MAX_ENCRYPT_LEN];
-      char tomsg[MAX_ENCRYPT_LEN];
+      char frommsg[MAX_ENCRYPT_LEN]; // The message encrypted for the sender
+      char tomsg[MAX_ENCRYPT_LEN]; // The message encrypted for the recipient
 
     } priv_msg;
 
     struct {
+      char signature[MAX_ENCRYPT_LEN];
       timestamp_t timestamp;
 
       char from[MAX_USER_LEN];
       
       char msg[MAX_MSG_LEN];
-
-      char signature[MAX_ENCRYPT_LEN];
-
-      //TODO: are we storing it here?
-      //X509 cert;
-
     } pub_msg;
 
     struct {
@@ -102,18 +107,10 @@ struct api_msg {
     struct {
     } exit;
   };
-
-  // The following are information about extra data that should be transmitted.
-  // These weren't implemented as static fields since the length is indeterminate
-  // and it's pretty wasteful to have ~3KB of overhead when you don't always need it
-  // So these "trailers" are sent/recieved after the api_msg is sent/recieved.
-
-  // Length of attached data (if any)
-  uint16_t encPrivKeyLen;
-  uint16_t certLen;
   
+  // Pointers to attached authentication info
   // Only should be used locally since pointers are meaningless over the wire
-  // Should be sent so the other side can recieve and set these fields
+  // Should be sent explicitly so the other side can recieve and set these fields
   char* encPrivKey;
   char* cert;
 };
