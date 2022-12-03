@@ -54,7 +54,8 @@ static int prep_msg_share(struct worker_state* state, struct api_msg* msg){
 }
 
 int notify(struct worker_state* state) {
-  db_get_messages(&state->dbConn, state, state->uid, prep_msg_share, &state->lastviewed);
+  if(is_logged_in(state))
+    db_get_messages(&state->dbConn, state, state->uid, prep_msg_share, &state->lastviewed);
 
   return 0;
 };
