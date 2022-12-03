@@ -72,11 +72,8 @@ Node* list_init() {
 }
 
 Node* list_find(Node* head, const char* key) {
-    head = head->next; // Skip dummy head
-    if(head == NULL) return NULL;
-
     while(head->next != NULL){
-        if(strcmp(head->key, key)==0) return head;
+        if(strcmp(head->next->key, key)==0) return head->next;
         head = head->next;
     }
     return NULL;
