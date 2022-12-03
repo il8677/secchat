@@ -272,7 +272,6 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
   unencrpyted[outlen-1] = '\0';
 
   state->privkey = crypto_parse_RSA_priv_string(unencrpyted);
-  d_privkey = state->privkey;
   free(unencrpyted);
 }
 

@@ -6,8 +6,6 @@
 #include "../util/linkedlist.h"
 #include <openssl/ssl.h>
 
-RSA* d_privkey;
-
 struct ui_state {
     
 };
