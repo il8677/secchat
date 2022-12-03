@@ -116,6 +116,7 @@ static int client_process_command(struct client_state* state) {
       case ERR_USERNAME_TOOLONG: printf("Given username is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
       case ERR_PASSWORD_TOOLONG: printf("Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
       case ERR_INVALID_NR_ARGS:  printf("Invalid number of arguments given.\n"); break;
+      case ERR_NO_USER: printf("\nerror: command not currently available\n"); break;
     }
     api_msg_free(&apimsg);
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying
