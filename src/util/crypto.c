@@ -145,18 +145,15 @@ void crypto_RSA_sign(RSA* key, const char* msg, uint16_t msglen, unsigned char* 
     EVP_MD_CTX_free(ctx);
 }
 
-int crypto_RSA_verify(X509* key, const char* msg, uint16_t msglen, const char* hashmsg, uint16_t hashmsglen) {
+int crypto_RSA_verify(X509* key, const char* msg, uint16_t msglen, const char* signature, uint16_t signaturelen) {
     EVP_PKEY* pkey = X509_get_pubkey(key);
     EVP_MD_CTX *ctx = EVP_MD_CTX_create();
     int r;
 
     EVP_VerifyInit(ctx, EVP_sha1());
-    EVP_VerifyUpdate(ctx, hashmsg, hashmsglen);
-    r = EVP_VerifyFinal(ctx, (const unsigned char*)msg, msglen, pkey);
-
-    //TODO: just test code
-    printf("signature is %s\n", (r == 1) ? "good" : "bad");
-
+    EVP_VerifyUpdate(ctx, (const unsigned char*)msg, msglen);
+    r = EVP_VerifyFinal(ctx, (const unsigned char*)signature, signaturelen, pkey);
+    
     EVP_PKEY_free(pkey);
     EVP_MD_CTX_free(ctx);
 
