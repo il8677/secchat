@@ -174,10 +174,10 @@ function createWebsocket(){
     const ws = new WebSocket("wss://localhost");
 
     ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
+        const nremoved = event.data.replaceAll("\n", " "); // Remove newlines that could cause issues with json
+        console.log(nremoved);
 
-        console.log("Data recieved");
-        console.log(msg);
+        const msg = JSON.parse(nremoved);
 
         document.dispatchEvent(new CustomEvent("recievedMessage", {detail: msg})); // The recieve message event is triggered when an api msg is recieved from the server
     }

@@ -9,10 +9,19 @@ function addMessage(msg){
 function handleMessageSend(event){
     event.preventDefault();
     const form = document.getElementById("msg-form");
-    const message = form.elements["message"].value;
+    var message = form.elements["message"].value;
 
-    // TODO: Private messages
-    sendData(getPubMsg(message));
+    if(message[0] == "@"){
+        var withoutat = form.elements["message"].value.slice(1);
+        const tokenized = withoutat.split(" ");
+        const name = tokenized[0];
+        tokenized.shift();
+        const message = tokenized.join(" ");
+
+        sendData(getPrivMsg(message, name));
+    }else{
+        sendData(getPubMsg(message));
+    }
 }
 
 function who(){
