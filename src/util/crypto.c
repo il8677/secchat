@@ -82,7 +82,7 @@ void crypto_get_user_auth(const char* name, char** outPrivkey, char** outCert){
 }
 
 // Taken from the provided examples
-X509* crypto_parse_x509_string(const char* x509str){ //TODO: memory leak
+X509* crypto_parse_x509_string(const char* x509str){
     BIO* bio = BIO_new_mem_buf(x509str, strlen(x509str));
 
     X509* cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
@@ -118,7 +118,7 @@ void crypto_RSA_pubkey_encrypt(char* dst, X509* key, char* msg, uint16_t msglen)
 }
 
 char* crypto_RSA_privkey_decrypt(RSA* key, const char* msg){
-    char* outbuf = malloc(RSA_size(key)); //TODO: valgrind says this is 0 bytes after a block of size 256 alloc'd
+    char* outbuf = malloc(RSA_size(key));
     
     // Note: This is depractated but it was provided in the examples
     RSA_private_decrypt(RSA_size(key), (const unsigned char*) msg, (unsigned char*) outbuf, key, RSA_PKCS1_OAEP_PADDING);
