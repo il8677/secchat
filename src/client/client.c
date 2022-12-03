@@ -14,7 +14,7 @@
 #include "../util/util.h"
 #include "../common/errcodes.h"
 #include "../../vendor/ssl-nonblock.h"
-#include "linkedlist.h"
+#include "../util/linkedlist.h"
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>

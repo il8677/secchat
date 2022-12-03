@@ -51,7 +51,7 @@ server.o: src/server/server.c src/util/util.h src/server/db.h api.o keys-server
 util.o: src/util/util.c src/util/util.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-linkedlist.o: src/client/linkedlist.c src/client/linkedlist.h
+linkedlist.o: src/util/linkedlist.c src/util/linkedlist.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
 worker.o: src/server/worker/worker.c src/util/util.h src/server/worker/worker.h src/server/db.h src/server/worker/workerapi.h

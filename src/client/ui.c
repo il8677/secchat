@@ -6,7 +6,7 @@
 #include <ctype.h>
 
 #include "ui.h"
-#include "linkedlist.h"
+#include "../util/linkedlist.h"
 #include "../common/api.h"
 #include "../common/errcodes.h"
 #include "../util/crypto.h"
