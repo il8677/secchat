@@ -184,14 +184,16 @@ static void list_msg_send_callback(Node* n, void* usr){
   api_send(&data->state->api, msg);
 }
 
-static int handle_attached_key(struct client_state* state, const struct api_msg* msg){
+static int handle_attached_key(struct client_state* state, const struct api_msg* msg, const char* name){
   if(!msg->certLen) return ERR_INVALID_API_MSG;
   // TODO: Verify cert authenticity (make sure the who matches the cert entry, and the CA signed it)
 
   X509* recievedCert = crypto_parse_x509_string(msg->cert);
 
+  printf("Recieved key for %s\n", msg->key.who);
+
   // Add cert to the list
-  list_add(state->head_certs, msg->key.who, recievedCert, sizeof(recievedCert)); 
+  list_add(state->head_certs, name, recievedCert, sizeof(recievedCert)); 
 
   struct callback_data_in data;
   data.other = recievedCert;
@@ -206,7 +208,7 @@ static int handle_attached_key(struct client_state* state, const struct api_msg*
 
 // Store the cert attatched to a message
 static void cacheAttatchedCert(struct client_state* state, const struct api_msg* msg){
-  handle_attached_key(state, msg);
+  handle_attached_key(state, msg, msg->pub_msg.from);
 }
 
 // Verifies an incoming message
@@ -307,7 +309,7 @@ static int execute_request(
       loginAck(msg, state);
       break;
     case KEY:
-      handle_attached_key(state, msg);  
+      handle_attached_key(state, msg, msg->key.who);  
       break;
     default:
       printf("Some error happened %d\n", msg->type);
