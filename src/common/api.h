@@ -31,7 +31,7 @@
     case REG: case LOGIN: printf("["dmsg"] LOGIN/REG %.*s %.*s\n", MAX_USER_LEN, apimsg.reg.username, MAX_USER_LEN, apimsg.reg.password); break;\
     case EXIT: printf("["dmsg"] EXIT\n"); break;\
     case LOGINACK: printf("["dmsg"] LOGINACK\n"); break;\
-    case KEY: printf("["dmsg"] KEY %.*s\n", MAX_USER_LEN, msg.key.who); break;\
+    case KEY: printf("["dmsg"] KEY %.*s\n", MAX_USER_LEN, apimsg.key.who); break;\
     default: printf("["dmsg"] UNRECONGIZED\n"); break;\
   }
 #else

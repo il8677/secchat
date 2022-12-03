@@ -261,6 +261,7 @@ int execute_request(struct worker_state* state,
   LOGIF("[execute_request] error: %d\n", res, res);
 
   if (doResponse) {
+    API_PRINT_MSG("send", responseData);
     state->apifuncs.send(&state->api, &responseData);
   }
 
