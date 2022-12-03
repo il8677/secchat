@@ -135,7 +135,7 @@ void crypto_RSA_sign(RSA* key, const char* msg, uint16_t msglen, unsigned char* 
     EVP_MD_CTX *ctx = EVP_MD_CTX_create();
     unsigned int siglen;
 
-    EVP_PKEY_assign_RSA(evpKey, key);
+    EVP_PKEY_set1_RSA(evpKey, key);
     EVP_SignInit(ctx, EVP_sha1());
     EVP_SignUpdate(ctx, msg, msglen);
     EVP_SignFinal(ctx, output, &siglen, evpKey);
