@@ -66,9 +66,10 @@ void handle_privmsg_send(RSA* key, X509* selfcert, X509* other, struct api_msg* 
   msg->type = PRIV_MSG;
 
   // The message is stored in frommsg, sign, encrypt and store. The recipient is already set
-  crypto_RSA_sign(key, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg), (unsigned char*)msg->priv_msg.signature);
-  crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, other, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg)+1);
-  crypto_RSA_pubkey_encrypt(msg->priv_msg.frommsg, selfcert, msg->priv_msg.frommsg, strlen(msg->priv_msg.frommsg)+1);
+  // Note: this is from user input, so priv_msg.from *should* be a safe string. strnlen is used for extra safety
+  crypto_RSA_sign(key, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN), (unsigned char*)msg->priv_msg.signature);
+  crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, other, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN)+1);
+  crypto_RSA_pubkey_encrypt(msg->priv_msg.frommsg, selfcert, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN)+1);
 }
 
 int input_handle_privmsg(Node* certList, Node* msgQueue, RSA* key, X509* selfcert, struct api_msg* apimsg, char* p) {
@@ -162,7 +163,7 @@ int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout) {
   char* tok = strtok(NULL, " ");
   if (tok != NULL) return ERR_INVALID_NR_ARGS;
   
-  // Store the password
+  // Store the password for client use
   free(*passwordout);
   *passwordout = strdup(password);
 
