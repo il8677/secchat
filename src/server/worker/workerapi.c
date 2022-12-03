@@ -124,6 +124,7 @@ void worker_state_free(struct worker_state* state) {
 
   db_state_free(&(state->dbConn));
 
+  list_free(state->sentCerts);
 
   /* close file descriptors */
   close(state->server_fd);
