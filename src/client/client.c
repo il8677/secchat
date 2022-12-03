@@ -404,7 +404,7 @@ static int client_state_init(struct client_state* state) {
 }
 
 void list_clean_cert(Node* n, void* usr){
-  X509_free(((X509**)n->contents)[0]); //TODO: memory leak
+  X509_free(((X509**)n->contents)[0]);
 }
 
 static void client_state_free(struct client_state* state) {
