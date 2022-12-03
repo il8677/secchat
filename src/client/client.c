@@ -190,7 +190,7 @@ static int handle_attached_key(struct client_state* state, const struct api_msg*
 
   X509* recievedCert = crypto_parse_x509_string(msg->cert);
 
-  printf("Recieved key for %s\n", msg->key.who);
+  printf("Recieved key for %s: %p\n", name, recievedCert);
 
   // Add cert to the list
   list_add(state->head_certs, name, recievedCert, sizeof(recievedCert)); 
@@ -403,6 +403,10 @@ static int client_state_init(struct client_state* state) {
   return 0;
 }
 
+void list_clean_cert(Node* n, void* usr){
+  X509_free((X509*)n->contents);
+}
+
 static void client_state_free(struct client_state* state) {
 
   /* cleanup API state */
@@ -417,6 +421,8 @@ static void client_state_free(struct client_state* state) {
   free(state->password);
 
   // Clean up linked lists
+  list_exec_all(state->head_certs, list_clean_cert, NULL, 0);
+
   list_free(state->head_certs); // TODO: need &? :)
   list_free(state->head_msg_queue);
 

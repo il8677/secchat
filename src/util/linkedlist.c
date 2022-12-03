@@ -50,18 +50,34 @@ void list_del(Node* head, const char* key) {
 }
 
 void list_exec(Node* head, const char* key, list_cb_t cb, void* userData, char doDelete){
-    while(head != NULL && head->next != NULL){
+    while(head->next != NULL){
         if(strcmp(head->next->key, key) == 0) {
             cb(head->next, userData);
             if(doDelete){
                 Node* temp;
                 temp = head->next;
                 head->next = head->next->next;
+                if(head->next == NULL) return;
                 node_free(temp);
             }
         }
         head = head->next;
     }
+}
+
+void list_exec_all(Node* head, list_cb_t cb, void* userData, char doDelete){
+    while(head->next != NULL){
+        cb(head->next, userData);
+        if(doDelete){
+            Node* temp;
+            temp = head->next;
+            head->next = head->next->next;
+            if(head->next == NULL) return;
+            node_free(temp);
+        }
+        head = head->next;
+    }
+
 }
 
 Node* list_init() {

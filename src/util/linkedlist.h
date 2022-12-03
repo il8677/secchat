@@ -26,6 +26,7 @@ void list_del(Node* head, const char* key);
 /// @param userData arbitrary data to pass into the function
 /// @param doDelete boolean: delete flag after exec
 void list_exec(Node* head, const char* key, list_cb_t cb, void* userData, char doDelete);
+void list_exec_all(Node* head, list_cb_t cb, void* userData, char doDelete);
 
 Node* list_find(Node* head, const char* key);
 
