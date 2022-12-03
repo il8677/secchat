@@ -89,6 +89,7 @@ struct api_msg {
 
     struct {
       // So who aligns with priv_msg to
+      char padding5[MAX_ENCRYPT_LEN];
       timestamp_t padding1;
       char padding4[MAX_USER_LEN];
       char who[MAX_USER_LEN];
