@@ -124,7 +124,7 @@ char* crypto_RSA_privkey_decrypt(RSA* key, const char* msg){
     RSA_private_decrypt(RSA_size(key), (const unsigned char*) msg, (unsigned char*) outbuf, key, RSA_PKCS1_OAEP_PADDING);
 
     // Worse comes to worse we just print junk
-    outbuf[RSA_size(key)] = '\0';
+    outbuf[RSA_size(key)-1] = '\0';
 
     return outbuf;
 }
