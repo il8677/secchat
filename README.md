@@ -89,7 +89,8 @@ When parsing the input we check if the the command is valid, and the message is 
 
 ## cryptography
 
-### message encryption
+### message encryption TODO: certificate verification with ca
+All messages have a signature which consists of the hashed message which is encrypted with the senders private key. Private messages are send to the server in twofold where one of the messages is encrypted with our own public key and one message is encrypted with the recipients public key. This ensures that all messages are end-to-end encrypted as they are stored encrypted in the server and the server does not have the private key to decrypt them. 
 
 ## displaying messages
 When displaying the messages we make sure to never print more characters than the respective max length.
@@ -97,3 +98,27 @@ When displaying the messages we make sure to never print more characters than th
 # database
 ## message containing sql commands
 The database api makes sure that an sql command in the message wont affect any database. This is handled by the sqlite3 library mprintf call with the %Q format specifier, which quotes any input and escapes any internal quotes, ensuring escape impossible.
+
+## security properties
+
+### Mallory cannot get information about private messages for which she is not either the sender or the intended recipient.
+This is done by encrypting private messages end-to-end. The server stores encrypted messages which can only be read if you have the private key from the sender or the recipient. As mallory does not have them she cannot read them.
+
+### Mallory cannot send messages on behalf of another user. TODO: add some more maybe?
+Every message is signed and contains a certificate with the public key to decrypt it. The certificate is requested from the CA which we assume is trustworthy. Whenever we receive a message we verify that the certificate is correct and belongs to the person who actually sent the message. We then hash the message and compare it to the decryption of the encrypted hash (the signature). Since mallory cannot forge such a valid certificate we can be sure that the actual sender is who they say they are.
+
+### Mallory cannot modify messages sent by other users. TODO: if the message got tampered with do we still show it?
+Again this comes down to the signing. If even only a single character gets changed the hash of the message will not be the same and the signature will not be correct. Thus if Mallory were to change the message the user would know the message got changed and would not show it.
+
+• Mallory cannot find out users’ passwords, private keys, or private messages
+(even if the server is compromised).
+• Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on.
+• Mallory cannot leak or corrupt data in the client or server programs.
+• Mallory cannot crash the client or server programs.
+• The programs must never expose any information from the systems they
+run on, beyond what is required for the program to meet the requirements
+in the assignments.
+6
+• The programs must be unable to modify any files except for chat.db
+and the contents of the clientkeys and clientkeys directories, or any
+operating system settings, even if Mallory attempts to force it to do so.
