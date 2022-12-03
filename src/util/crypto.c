@@ -28,6 +28,7 @@ int read_file(const char* path, char** out){
     *out = malloc(fsize+1);
     fread(*out, fsize, 1, f);
     (*out)[fsize] = '\0';
+    
     fclose(f);
     return 0; 
 }
