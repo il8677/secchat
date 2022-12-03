@@ -217,7 +217,7 @@ static char verifyMessage(struct client_state* state, const struct api_msg* msg,
 
   X509* cert = ((X509**)n->contents)[0];
 
-  return crypto_RSA_verify(cert, msgtext, strlen(msgtext), msg->priv_msg.signature, MAX_ENCRYPT_LEN);
+  return crypto_RSA_verify(cert, msgtext, strnlen(msgtext, MAX_MSG_LEN_M1), msg->priv_msg.signature, MAX_ENCRYPT_LEN);
 }
 
 static void privMsg(struct client_state* state, const struct api_msg * msg){
