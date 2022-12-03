@@ -190,10 +190,8 @@ static int handle_attached_key(struct client_state* state, const struct api_msg*
 
   X509* recievedCert = crypto_parse_x509_string(msg->cert);
 
-  printf("Recieved key for %s: %p\n", name, recievedCert);
-
-  // Add cert to the list
-  list_add(state->head_certs, name, recievedCert, sizeof(recievedCert)); 
+  // Add pointer to cert to the list
+  list_add(state->head_certs, name, &recievedCert, sizeof(recievedCert)); 
 
   struct callback_data_in data;
   data.other = recievedCert;
@@ -217,7 +215,8 @@ static char verifyMessage(struct client_state* state, const struct api_msg* msg,
 
   if(n == NULL) return 0;
 
-  X509* cert = (X509*)n->contents;
+  X509* cert = ((X509**)n->contents)[0];
+
   return crypto_RSA_verify(cert, msgtext, strlen(msgtext), msg->priv_msg.signature, MAX_ENCRYPT_LEN);
 }
 
