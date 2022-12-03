@@ -43,12 +43,20 @@ int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* user
 /// @return 0 if OK, error code otherwise
 int db_add_cert(struct db_state* state, struct api_msg* msg, const char* username);
 
-/// @brief Adds a message to the database
+/// @brief Adds a public message to the database
 /// @param state db state
 /// @param msg The API message to add
 /// @param uid The UID of the sender
 /// @return 0 if OK, ERRCODE otherwise
-int db_add_message(struct db_state* state, const struct api_msg* msg, int uid);
+int db_add_pub_message(struct db_state* state, const struct api_msg* msg, int uid);
+
+/// @brief Adds a public message to the database
+/// @param state db state
+/// @param msg The API message to add
+/// @param uid The UID of the sender
+/// @return 0 if OK, ERRCODE otherwise
+int db_add_priv_message(struct db_state* state, const struct api_msg* msg, int uid);
+
 
 /// @brief Registers a user
 /// @param state db state

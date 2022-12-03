@@ -60,16 +60,17 @@ void db_create(struct db_state* state){
         cert VARCHAR("STR(MAX_CERT)") NOT NULL);", 
     NULL, NULL);
 
-    // Create DB for both, this is needed for a common ordering between public and private messages
+    // Create message DB
     sql_exec(state->db, 
     "CREATE TABLE IF NOT EXISTS messages ( \
         id INTEGER PRIMARY KEY AUTOINCREMENT, \
         timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now')), \
         sender INTEGER NOT NULL, \
+        signature BLOB("STR(MAX_ENCRYPT_LEN)") NOT NULL, \
         FOREIGN KEY(sender) REFERENCES users(id))",
     NULL, NULL);
 
-    // Create message db
+    // Create public message db
     sql_exec(state->db, 
     "CREATE TABLE IF NOT EXISTS pub_messages ( \
         id INTEGER PRIMARY KEY, \
@@ -101,7 +102,7 @@ int db_get_messages(struct db_state* state, struct api_state* astate, int uid, i
         SELECT messages.id, timestamp, sender, recipient, recipientmsg FROM priv_messages LEFT JOIN messages ON messages.id == priv_messages.id WHERE recipient == %d) AS q1 \
         LEFT JOIN users AS su ON su.id == q1.sender \
         LEFT JOIN users AS ru ON ru.id == q1.recipient \
-        WHERE q1.id > %i ;", 
+        WHERE q1.id > %i;", 
         uid, uid, *lastviewed);
 
 
@@ -253,50 +254,78 @@ int db_add_cert(struct db_state* state, struct api_msg* msg, const char* usernam
     return retvalue;
 }
 
+// Helper function to add message to the messages table (used by both types of message)
 int db_add_message(struct db_state* state, const struct api_msg* msg, int uid){
+char* query = NULL;
+    sqlite3_stmt* stmt = NULL;
+    int res;
+
+    // Add to message DB
+    query = sqlite3_mprintf("INSERT INTO messages (sender, signature) VALUES (%i, @signature);", uid);
+    SQL_CALL(sqlite3_prepare_v2(state->db, query, -1, &stmt, NULL), state->db, ERR_SQL, res);
+    SQL_CALL(sqlite3_bind_blob(stmt, 1, msg->pub_msg.signature, MAX_ENCRYPT_LEN, NULL), state->db, ERR_SQL, res);
+
+    res = sqlite3_step(stmt);
+
+    cleanup:
+    sqlite3_free(query);
+    sqlite3_finalize(stmt);
+
+    if(res != SQLITE_DONE) res = ERR_SQL;
+    else res = SQLITE_OK;
+
+    return res;
+}
+
+int db_add_pub_message(struct db_state* state, const struct api_msg* msg, int uid){
+    if(msg->type != PUB_MSG) return ERR_INVALID_API_MSG;
+    
+    char* query = NULL;
+    int res;
+
+    SQL_CALL(db_add_message(state, msg, uid), state->db, ERR_SQL, res);
+
+    query = sqlite3_mprintf("INSERT INTO pub_messages (id, msg) VALUES (last_insert_rowid(), %Q);", msg->pub_msg.msg);
+    res = sql_exec(state->db, query, NULL, NULL);
+
+    cleanup:
+    sqlite3_free(query);
+    
+    return res == SQLITE_OK ? 0 : ERR_SQL;
+}
+
+int db_add_priv_message(struct db_state* state, const struct api_msg* msg, int uid){
+    if(msg->type != PRIV_MSG) return ERR_INVALID_API_MSG;
+
+    int id = nametoid(state, msg->priv_msg.to);
+    // If error
+    if(id == ERR_NO_USER) return ERR_RECIPIENT_INVALID;
+    if(id < 0) return id;
+
     char* query = NULL;
     sqlite3_stmt* stmt = NULL;
     int res;
 
-    // Create relevant query to insert message
-    if(msg->type == PRIV_MSG){
-        int id = nametoid(state, msg->priv_msg.to);
+    SQL_CALL(db_add_message(state, msg, uid), state->db, ERR_SQL, res);
 
-        // If error
-        if(id == ERR_NO_USER) return ERR_RECIPIENT_INVALID;
-        if(id < 0) return id;
+    query = sqlite3_mprintf("INSERT INTO priv_messages (id, recipient, sendermsg, recipientmsg) VALUES (last_insert_rowid(), %i, @sendermsg, @recipientmsg);", id);
 
-        query = sqlite3_mprintf("INSERT INTO messages (sender) VALUES (%i);", uid);
-        
-        sql_exec(state->db, query, NULL, NULL);
-        
-        sqlite3_free(query);
+    SQL_CALL(sqlite3_prepare_v2(state->db, query, -1, &stmt, NULL), state->db, ERR_SQL, res);
+    SQL_CALL(sqlite3_bind_blob(stmt, 1, msg->priv_msg.frommsg, MAX_ENCRYPT_LEN, NULL), state->db, ERR_SQL, res);
+    SQL_CALL(sqlite3_bind_blob(stmt, 2, msg->priv_msg.tomsg, MAX_ENCRYPT_LEN, NULL), state->db, ERR_SQL, res);
 
-        query = sqlite3_mprintf("INSERT INTO priv_messages (id, recipient, sendermsg, recipientmsg) VALUES (last_insert_rowid(), %i, @sendermsg, @recipientmsg);", id);
+    res = sqlite3_step(stmt);
 
-        SQL_CALL(sqlite3_prepare_v2(state->db, query, -1, &stmt, NULL), state->db, ERR_SQL, res);
-        SQL_CALL(sqlite3_bind_blob(stmt, 1, msg->priv_msg.frommsg, MAX_ENCRYPT_LEN, NULL), state->db, ERR_SQL, res);
-        SQL_CALL(sqlite3_bind_blob(stmt, 2, msg->priv_msg.tomsg, MAX_ENCRYPT_LEN, NULL), state->db, ERR_SQL, res);
-
-        res = sqlite3_step(stmt);
-
-        if(res != SQLITE_DONE) res = ERR_SQL;
-        else res = 0;
-    }else if(msg->type == PUB_MSG){
-        query = sqlite3_mprintf("INSERT INTO messages (sender) VALUES (%i);\
-            INSERT INTO pub_messages (id, msg) VALUES (last_insert_rowid(), %Q);", uid, msg->pub_msg.msg);
-        res = sql_exec(state->db, query, NULL, NULL);
-    }else{
-        return ERR_INVALID_API_MSG;
-    }
-
+    if(res != SQLITE_DONE) res = ERR_SQL;
+    else res = 0;
 
     cleanup:
     sqlite3_free(query);
-    if(stmt != NULL) sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt);
     
     return res == SQLITE_OK ? 0 : ERR_SQL;
 }
+
 
 int db_state_init(struct db_state* state){
     int res = sqlite3_open("chat.db", &(state->db));

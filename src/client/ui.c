@@ -181,6 +181,9 @@ int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout) {
 }
 
 int input_handle_pubmsg(RSA* key, struct api_msg* apimsg, char* p) {
+  if(key == NULL) return ERR_NO_USER;
+
+
   char *p_start = p;
   char *p_last = p + strlen(p) -1;
 

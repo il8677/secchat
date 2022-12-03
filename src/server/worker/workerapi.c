@@ -176,8 +176,13 @@ int execute_request(struct worker_state* state,
       }
       break;
     case PRIV_MSG:
+      res = db_add_priv_message(&state->dbConn, msg, state->uid);
+      
+      if(res >= 0)
+        notify_workers(state);
+      break;
     case PUB_MSG:
-      res = db_add_message(&state->dbConn, msg, state->uid);
+      res = db_add_pub_message(&state->dbConn, msg, state->uid);
 
       if(res >= 0)
         notify_workers(state);
