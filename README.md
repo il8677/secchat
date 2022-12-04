@@ -1,6 +1,6 @@
 # walkthrough
 
-## client initialization ?? not sure if top of the page is the place for this
+## client initialization
 When we initialize the client we create two linked lists. One we use to store certificates from other clients to look up public keys for when we are private messaging them. The other is used as a queue to temporarily store the private message we were about to send but for which we do not have the recipients certificate yet. A special KEY request is then send to the server which will provide us with the certificate of the user we want to privately communicate with.
 
 ## parsing input (client_process_command, client.c)
@@ -9,10 +9,10 @@ The client starts with seperating the command from the message in "client_proces
 ## preparing message
 Depending on the command different steps are taken.
 
--   ### register (input_handle_register| ui.c)    TODO: do we use salt?
+-   ### register (input_handle_register| ui.c)
     When register is called we first check if the username has already been taken or not and if the password and/or the username is valid (not empty). We then hash the password, request a certificate from the CA and generate a private key. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server. (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it so whatever.) 
 
--   ### login  (input_handle_login| ui.c)     TODO: salt? verify that the private key is actually correct w certificate?
+-   ### login  (input_handle_login| ui.c)
     After login is called we hash the password and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and verify the certificate with the key. This ensures that we have the same keypair every time even when logging in from different devices. (loginAck| client.c) 
     
 -   ### private message (input_handle_privmsg| ui.c)
@@ -89,7 +89,7 @@ When parsing the input we check if the the command is valid, and the message is 
 
 ## cryptography
 
-### message encryption TODO: certificate verification with ca
+### message encryption
 All messages have a signature which consists of the hashed message which is encrypted with the senders private key. Private messages are send to the server in twofold where one of the messages is encrypted with our own public key and one message is encrypted with the recipients public key. This ensures that all messages are end-to-end encrypted as they are stored encrypted in the server and the server does not have the private key to decrypt them. 
 
 ## displaying messages
@@ -110,7 +110,7 @@ Every message is signed and contains a certificate with the public key to decryp
 ### Mallory cannot modify messages sent by other users. TODO: if the message got tampered with do we still show it?
 Again this comes down to the signing. If even only a single character gets changed the hash of the message will not be the same and the signature will not be correct. Thus if Mallory were to change the message the user would know the message got changed and would not show it.
 
-• Mallory cannot find out users’ passwords, private keys, or private messages
+ Mallory cannot find out users’ passwords, private keys, or private messages
 (even if the server is compromised).
 • Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on.
 • Mallory cannot leak or corrupt data in the client or server programs.
@@ -122,3 +122,17 @@ in the assignments.
 • The programs must be unable to modify any files except for chat.db
 and the contents of the clientkeys and clientkeys directories, or any
 operating system settings, even if Mallory attempts to force it to do so.
+
+# possible attacks and their defenses
+
+## Man-in-the-middle
+Our clients and server exchange certificates issued by the CA which is used to authenticate messages send by the owner of that certificate. An invalid certificate will not be accepted and we can therefore identify this type of attack.
+
+## Buffer overflows
+When handling input from a user we have several security checks in place which make sure the input does not exceed certain bounderies that could trigger potential buffer overflows. Input checks include but are not limited to: the amount, length, empty and type of arguments to make sure the input of the client is valid.
+
+## Injection
+ Besides the aformentioned buffer overflow checks, we make sure any SQL input in message from the client are not executed during database handling. (See database section)
+
+## Padding oracle attack
+The defense of this attack is handled by openSSL and achieved through random padding.
