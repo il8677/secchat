@@ -114,7 +114,7 @@ Again this comes down to the signing. If even only a single character gets chang
 ### Mallory cannot find out users’ passwords, private keys, or private messages (even if the server is compromised).
 The database only stores hashed salted passwords. Even if the server is compromised Mallory cannot do much with this information as Mallory cannot undo the hash. Frequency analysis is also not possible due to the salt. Private keys are stored encrypted with the password. Assuming that the password is indeed safe there is no way for Mallory to decrypt the private key. Then assumming that both the password and the private key are safe Mallory cannot decrypt the private messages as it does not have the private key.
 
-### Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on. TODO: not sure how
+### Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on. TODO: not sure how we actually do this
 
 ### Mallory cannot leak or corrupt data in the client or server programs. TODO: is this an actual good answer?
 Well assuming that Mallory can compromise the server she actually could corrupt the data. However because of the signature the user/client would know that the data has been corrupted.  
