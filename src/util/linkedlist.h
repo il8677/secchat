@@ -18,7 +18,7 @@ void list_free(Node* head);
 
 /// @brief Add to a linked list
 /// @return 1 if failed
-int list_add(Node* head, const char* key, void* data, uint16_t datalen);
+int list_add(Node* head, const char* key, void* data, uint16_t datalen, char unique);
 void list_del(Node* head, const char* key);
 
 /// @brief Executes a callback across a list

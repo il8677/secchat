@@ -184,8 +184,8 @@ int crypto_verify_x509(X509* target, const char* name){
 
     char *cn = malloc(nameLen+1);
     X509_NAME_get_text_by_NID(certname, NID_commonName, cn, nameLen+1);
-
+    char valid = !strcmp(cn, name);
     free(cn);
 
-    return !strcmp(cn, name);
+    return valid;
 }

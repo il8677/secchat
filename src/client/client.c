@@ -194,7 +194,7 @@ static int handle_attached_key(struct client_state* state, const struct api_msg*
   if(!crypto_verify_x509(recievedCert, name)) return ERR_CERT_AUTHENTICITY;
 
   // Add pointer to cert to the list
-  list_add(state->head_certs, name, &recievedCert, sizeof(recievedCert)); 
+  list_add(state->head_certs, name, &recievedCert, sizeof(recievedCert), 1); 
 
   struct callback_data_in data;
   data.other = recievedCert;
@@ -283,7 +283,7 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
   char testString[] = "this is a test string";
   char encrypted[MAX_ENCRYPT_LEN];
 
-  crypto_RSA_pubkey_encrypt(encrypted, state->cert, testString, strlen(testString));
+  crypto_RSA_pubkey_encrypt(encrypted, state->cert, testString, strlen(testString)+1);
   char* out = crypto_RSA_privkey_decrypt(state->privkey, encrypted);
 
   // Bad cert!

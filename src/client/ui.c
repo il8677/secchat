@@ -68,8 +68,8 @@ void handle_privmsg_send(RSA* key, X509* selfcert, X509* other, struct api_msg* 
   // The message is stored in frommsg, sign, encrypt and store. The recipient is already set
   // Note: this is from user input, so priv_msg.from *should* be a safe string. strnlen is used for extra safety
   crypto_RSA_sign(key, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN), (unsigned char*)msg->priv_msg.signature);
-  crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, other, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN)+1);
-  crypto_RSA_pubkey_encrypt(msg->priv_msg.frommsg, selfcert, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN)+1);
+  crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, other, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN-1)+1);
+  crypto_RSA_pubkey_encrypt(msg->priv_msg.frommsg, selfcert, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN-1)+1);
 }
 
 int input_handle_privmsg(Node* certList, Node* msgQueue, RSA* key, X509* selfcert, struct api_msg* apimsg, char* p) {
@@ -98,7 +98,7 @@ int input_handle_privmsg(Node* certList, Node* msgQueue, RSA* key, X509* selfcer
     apimsg->type = KEY;
 
     // Add message to queue
-    list_add(msgQueue, to, apimsg, sizeof(struct api_msg));
+    list_add(msgQueue, to, apimsg, sizeof(struct api_msg), 0);
 
     // Wipe msg so it isn't leaked to server
     memset(apimsg->priv_msg.frommsg, 0, MAX_MSG_LEN);

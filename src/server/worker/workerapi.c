@@ -46,7 +46,7 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
 
 static int prep_msg_share(struct worker_state* state, struct api_msg* msg){
   // Attach sender cert if it wasn't yet sent
-  if(list_add(state->sentCerts, msg->priv_msg.from, NULL, 0) == 0){  
+  if(list_add(state->sentCerts, msg->priv_msg.from, NULL, 0, 1) == 0){  
     db_add_cert(&state->dbConn, msg, msg->priv_msg.from);
   }
 
@@ -194,7 +194,7 @@ int execute_request(struct worker_state* state,
         responseData.type = KEY;
         memcpy(responseData.key.who, msg->key.who, MAX_USER_LEN);
 
-        list_add(state->sentCerts, msg->key.who, NULL, 0);        
+        list_add(state->sentCerts, msg->key.who, NULL, 0, 1);
       }
       break;
     case PRIV_MSG:

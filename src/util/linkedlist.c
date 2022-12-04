@@ -27,9 +27,9 @@ void list_free(Node* head) {
     node_free(head);
 }
 
-int list_add(Node* head, const char* key, void* data, uint16_t datalen) {
+int list_add(Node* head, const char* key, void* data, uint16_t datalen, char unique) {
     while(head->next != NULL) {
-        if( strcmp(key, head->next->key) == 0) return 1; // Don't insert something that already exists
+        if(unique && strcmp(key, head->next->key) == 0) return 1; // Don't insert something that already exists
         head = head->next;
     }
     
