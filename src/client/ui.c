@@ -128,7 +128,7 @@ int input_handle_users(struct api_msg* apimsg, char* p) {
   return 0;
 }
 
-int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout) {
+int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout, char** usernameout) {
   char *username = strtok(NULL, " ");
   if (username == NULL) return ERR_NAME_INVALID;
 
@@ -140,9 +140,11 @@ int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout) {
 
   if (strlen(username)+1 > MAX_USER_LEN) return ERR_USERNAME_TOOLONG;
 
-  // Store the password
+  // Store the password / username
   free(*passwordout);
   *passwordout = strdup(password); 
+  free(*usernameout);
+  *usernameout = strdup(username);
 
   apimsg->type = LOGIN;
   strncpy(apimsg->login.username, username, MAX_USER_LEN);
@@ -151,7 +153,7 @@ int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout) {
   return 0;
 }
 
-int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout) {
+int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout, char** usernameout) {
   char *username = strtok(NULL, " ");
   if (username == NULL) return ERR_NAME_INVALID;
   
@@ -163,9 +165,11 @@ int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout) {
   char* tok = strtok(NULL, " ");
   if (tok != NULL) return ERR_INVALID_NR_ARGS;
   
-  // Store the password for client use
+  // Store the password / username
   free(*passwordout);
   *passwordout = strdup(password);
+  free(*usernameout);
+  *usernameout = strdup(username);
 
   apimsg->type = REG;
   strncpy(apimsg->reg.username, username, MAX_USER_LEN);

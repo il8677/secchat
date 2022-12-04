@@ -19,8 +19,8 @@ int message_too_long(char* msg);
 int input_handle_privmsg(Node* certList, Node* msgQueue, RSA* key, X509* selfcert, struct api_msg* apimsg, char* p);
 int input_handle_exit(struct api_msg* apimsg, char* p);
 int input_handle_users(struct api_msg* apimsg, char* p);
-int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout);
-int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout);
+int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout, char** usernameout);
+int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout, char** usernameout);
 int input_handle_pubmsg(RSA* key, struct api_msg* apimsg, char* p);
 
 /// @brief Prepares a privmessage for sending by encrpyting

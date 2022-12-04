@@ -93,8 +93,8 @@ static int client_process_command(struct client_state* state) {
       char* cmd = strtok(p, " ");
       if (strcmp(cmd, "exit") == 0) { errcode = input_handle_exit(&apimsg, p); state->eof = 1;}
       else if (strcmp(cmd, "users") == 0) errcode = input_handle_users(&apimsg, p);
-      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p, &state->password);
-      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p, &state->password);
+      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p, &state->password, &state->username);
+      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p, &state->password, &state->username);
       else errcode = ERR_COMMAND_ERROR;
     }
   }
@@ -438,6 +438,7 @@ static void client_state_free(struct client_state* state) {
   RSA_free(state->privkey);
 
   free(state->password);
+  free(state->username);
 
   // Clean up linked lists
   list_exec_all(state->head_certs, list_clean_cert, NULL, 0);
