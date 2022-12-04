@@ -61,13 +61,14 @@ int protht_recv(struct worker_state* wstate, struct api_msg* msg){
     const char* method = strtok(buf, " ");
     const char* path = strtok(NULL, " ");
 
+    if(method == NULL || path == NULL) return -1;
+
     printf("[web] Request len %d %s: %s\n", len, method, path);
 
     char* websocket_code = strstr(strtok(NULL, ""), "Sec-WebSocket-Key: ");
     
     // Upgrade to websocket
-    // TODO: Verify websocket request validity
-    if(websocket_code != NULL){ // TODO: Error checking
+    if(websocket_code != NULL){
         printf("[websocket] Upgrading to websocket\n");
         // Move to the actual code
         websocket_code += strlen("Sec-WebSocket-Key: ");

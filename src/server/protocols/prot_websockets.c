@@ -70,10 +70,10 @@ char* protwb_processKey(const char *str){
 
 int wb_api_to_json_send(struct api_state* state, struct api_msg* msg){
     char* json = api_msg_to_json(msg);
-    send_frame(state, (unsigned char*)json, strlen(json), 0x1);
+    int res = send_frame(state, (unsigned char*)json, strlen(json), 0x1);
     free(json);
 
-    return 1;
+    return res == 0;
 }
 
 static int msg_query_cb(struct api_state* state, struct api_msg* msg){
@@ -86,8 +86,7 @@ int protwb_notify(struct worker_state* state){
 }
 
 int protwb_send(struct worker_state* state, struct api_msg* msg){
-    wb_api_to_json_send(&state->api, msg);
-    return 1;
+    return wb_api_to_json_send(&state->api, msg);
 }
 
 int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
@@ -149,7 +148,6 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
     {
     case 0x9: // Ping
         return send_frame(state, data, payloadLen, 0xA);
-        break;
     case 0x2:
         // Check if data is correct size
         if(payloadLen > sizeof(struct api_msg)){
@@ -158,11 +156,9 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
         }
         memcpy(msg, data, payloadLen);
         return 1;
-        break;
     default:
         printf("[websockets] Unsupported opcode %x\n", opcode);
         return -1;
-        break;
     }
 
     return 1;    
