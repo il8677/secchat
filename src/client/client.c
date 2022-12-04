@@ -189,9 +189,9 @@ static void list_msg_send_callback(Node* n, void* usr){
 
 static int handle_attached_key(struct client_state* state, const struct api_msg* msg, const char* name){
   if(!msg->certLen) return ERR_INVALID_API_MSG;
-  // TODO: Verify cert authenticity (make sure the who matches the cert entry, and the CA signed it)
 
   X509* recievedCert = crypto_parse_x509_string(msg->cert);
+  if(!crypto_verify_x509(recievedCert, name)) return ERR_CERT_AUTHENTICITY;
 
   // Add pointer to cert to the list
   list_add(state->head_certs, name, &recievedCert, sizeof(recievedCert)); 
@@ -264,8 +264,8 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
   if(msg->certLen == 0 || msg->encPrivKeyLen == 0) return;
 
   if(state->password == NULL) return;
+  if(state->username == NULL) return;
 
-  // TODO: Verify cert with privkey
   state->cert = crypto_parse_x509_string(msg->cert);
 
   uint16_t outlen;
@@ -276,6 +276,24 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
 
   state->privkey = crypto_parse_RSA_priv_string(unencrpyted);
   free(unencrpyted);
+
+  // Check if privkey matches pubkey (server can send fake certificate to try to listen to privmessages)
+  // I could not find a good method to do this, so verifying that encryption / decryption worked seemed like an OK solution
+
+  char testString[] = "this is a test string";
+  char encrypted[MAX_ENCRYPT_LEN];
+
+  crypto_RSA_pubkey_encrypt(encrypted, state->cert, testString, strlen(testString));
+  char* out = crypto_RSA_privkey_decrypt(state->privkey, encrypted);
+
+  // Bad cert!
+  if(strcmp(testString, out) != 0){
+    printf("Error: Recieved invalid certificate from server!\n");
+    state->eof = 1;
+    free(out);
+    return;
+  }
+  free(out);
 }
 
 /**

@@ -179,11 +179,11 @@ int crypto_verify_x509(X509* target, const char* name){
 
     if(!X509_verify(target, cakey)) return 0;
 
-    X509_NAME* name = X509_get_subject_name(target);
-    int nameLen = X509_NAME_get_text_by_NID(name, NID_commonName, NULL, 0) + 1; // TODO: What happens with no name?
+    X509_NAME* certname = X509_get_subject_name(target);
+    int nameLen = X509_NAME_get_text_by_NID(certname, NID_commonName, NULL, 0) + 1; // TODO: What happens with no name?
 
     char *cn = malloc(nameLen+1);
-    X509_NAME_get_text_by_NID(name, NID_commonName, cn, nameLen+1);
+    X509_NAME_get_text_by_NID(certname, NID_commonName, cn, nameLen+1);
 
     free(cn);
 
