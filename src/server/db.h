@@ -6,6 +6,8 @@
 #include <sqlite3.h>
 #include "../common/api.h"
 
+struct worker_state;
+
 struct db_state{
     sqlite3* db;
 };
@@ -27,14 +29,36 @@ void db_state_free(struct db_state* state);
 /// @param uid the user id to get messages for
 /// @param cb the callback to send api_msgs to, returns 0 for no error
 /// @return 0 if OK, error code otherwise
-int db_get_messages(struct db_state* state, struct api_state* astate, int uid, int(*cb) (struct api_state*, struct api_msg*), timestamp_t* lastviewed);
+int db_get_messages(struct db_state* state, struct worker_state* astate, int uid, int(*cb) (struct worker_state*, struct api_msg*), timestamp_t* lastviewed);
 
-/// @brief Adds a message to the database
+/// @brief Adds a privkey to an apimsg
+/// @param state db state
+/// @param msg apimsg to add to
+/// @param username The usernames private key to add
+/// @return 0 if OK, error code otherwise
+int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* username);
+
+/// @brief Adds a cert to an apimsg
+/// @param state db state
+/// @param msg apimsg to add to
+/// @param username The usernames cert to add
+/// @return 0 if OK, error code otherwise
+int db_add_cert(struct db_state* state, struct api_msg* msg, const char* username);
+
+/// @brief Adds a public message to the database
 /// @param state db state
 /// @param msg The API message to add
 /// @param uid The UID of the sender
 /// @return 0 if OK, ERRCODE otherwise
-int db_add_message(struct db_state* state, const struct api_msg* msg, int uid);
+int db_add_pub_message(struct db_state* state, const struct api_msg* msg, int uid);
+
+/// @brief Adds a public message to the database
+/// @param state db state
+/// @param msg The API message to add
+/// @param uid The UID of the sender
+/// @return 0 if OK, ERRCODE otherwise
+int db_add_priv_message(struct db_state* state, const struct api_msg* msg, int uid);
+
 
 /// @brief Registers a user
 /// @param state db state

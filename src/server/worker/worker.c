@@ -32,7 +32,7 @@ static int handle_s2w_read(struct worker_state* state) {
   }
 
   /* notify our client */
-  if (state->apifuncs.handle_notification(state) != 0) return -1;
+  if (notify(state) != 0) return -1;
 
   return 0;
 }

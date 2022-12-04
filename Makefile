@@ -54,15 +54,18 @@ server.o: src/server/server.c src/util/util.h src/server/db.h api.o keys-server
 util.o: src/util/util.c src/util/util.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
+linkedlist.o: src/util/linkedlist.c src/util/linkedlist.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
 worker.o: src/server/worker/worker.c src/util/util.h src/server/worker/worker.h src/server/db.h src/server/worker/workerapi.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-client: sslnonblock.o client.o api.o ui.o util.o crypto.o
+client: sslnonblock.o client.o api.o ui.o util.o crypto.o linkedlist.o
 
-server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o protwb.o crypto.o
+server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o linkedlist.o protwb.o crypto.o
 
 keys-server: keys-ttp
-	python3 ttp.py server
+	python3 ttp.py -s
 
 keys-ttp:
-	python3 ttp.py ttp
+	python3 ttp.py -ca

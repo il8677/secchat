@@ -9,10 +9,12 @@
 #include <ctype.h>
 
 #include "../common/api.h"
+#include "../util/crypto.h"
 #include "ui.h"
 #include "../util/util.h"
 #include "../common/errcodes.h"
 #include "../../vendor/ssl-nonblock.h"
+#include "../util/linkedlist.h"
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -21,6 +23,15 @@ struct client_state {
   struct api_state api;
   int eof;
   struct ui_state ui;
+  
+  struct Node* head_certs;
+  struct Node* head_msg_queue;
+
+  char* password; // The password entered by the user (needed for privkey decryption)
+  char* username; // The username entered by the user (needed for privkey decryption)
+
+  X509* cert;
+  RSA* privkey;
 };
 
 /**
@@ -66,6 +77,7 @@ static int client_process_command(struct client_state* state) {
   if(input == NULL) return -1; // STDIN Closed
 
   struct api_msg apimsg;
+  api_msg_init(&apimsg);
   int errcode = 0;
 
   //remove whitespace at the start of the input 
@@ -73,7 +85,7 @@ static int client_process_command(struct client_state* state) {
   char *p_end = input + strlen(input);
   while (p < p_end && isspace(*p)) p++;
   
-  if (p[0] == '@') errcode = input_handle_privmsg(&apimsg, p);
+  if (p[0] == '@') errcode = input_handle_privmsg(state->head_certs, state->head_msg_queue, state->privkey, state->cert, &apimsg, p);
   else if (p[0] == '/') {                      
     p++;
     if (strlen(p) == 0 || p[0] == ' ') errcode = ERR_COMMAND_ERROR;
@@ -81,19 +93,19 @@ static int client_process_command(struct client_state* state) {
       char* cmd = strtok(p, " ");
       if (strcmp(cmd, "exit") == 0) { errcode = input_handle_exit(&apimsg, p); state->eof = 1;}
       else if (strcmp(cmd, "users") == 0) errcode = input_handle_users(&apimsg, p);
-      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p);
-      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p);
+      else if (strcmp(cmd, "login") == 0) errcode = input_handle_login(&apimsg, p, &state->password, &state->username);
+      else if (strcmp(cmd, "register") == 0) errcode = input_handle_register(&apimsg, p, &state->password, &state->username);
       else errcode = ERR_COMMAND_ERROR;
     }
   }
-  else errcode = input_handle_pubmsg(&apimsg, p);
+  else errcode = input_handle_pubmsg(state->privkey, &apimsg, p);
   
   if (errcode == ERR_COMMAND_ERROR){
     printf("error: unknown command %s\n", input);
     free(input);
     return 0;
   }
-  
+
   free(input);
   if (errcode != 0) {
     printf("error: invalid command format\n\t");
@@ -105,11 +117,13 @@ static int client_process_command(struct client_state* state) {
       case ERR_USERNAME_TOOLONG: printf("Given username is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
       case ERR_PASSWORD_TOOLONG: printf("Given password is too long, max number of characters: %d.\n", MAX_USER_LEN); break;
       case ERR_INVALID_NR_ARGS:  printf("Invalid number of arguments given.\n"); break;
+      case ERR_NO_USER: printf("\nerror: command not currently available\n"); break;
     }
+    api_msg_free(&apimsg);
     return 0; //CAN BE CHANGED to errcode but for testing this was annoying
   }
-
   api_send(&(state->api), &apimsg);
+  api_msg_free(&apimsg);
   return 0;
 }
   
@@ -153,31 +167,135 @@ static void status(const struct api_msg * msg){
 
 static void formatTime(char* buffer, int size, timestamp_t timestamp){
   struct tm* tm_info;
-  tm_info = localtime(&timestamp);
+  tm_info = localtime(&timestamp); //TODO: somewhere here is a memory leak :)
 
   strftime(buffer, size, "%Y-%m-%d %H:%M:%S", tm_info);
+
 }
 
-static void privMsg(const struct api_msg * msg){
+// Data to pass into callback
+struct callback_data_in { X509* other; struct client_state* state; };
+
+// Man I wish lambda functions existed in C
+// Called on a linked list, sending stored messages
+static void list_msg_send_callback(Node* n, void* usr){
+  struct api_msg* msg = (struct api_msg*)n->contents;
+  struct callback_data_in* data = usr;
+
+  handle_privmsg_send(data->state->privkey, data->state->cert, data->other, msg);
+
+  api_send(&data->state->api, msg);
+}
+
+static int handle_attached_key(struct client_state* state, const struct api_msg* msg, const char* name){
+  if(!msg->certLen) return ERR_INVALID_API_MSG;
+
+  X509* recievedCert = crypto_parse_x509_string(msg->cert);
+  if(!crypto_verify_x509(recievedCert, name)) return ERR_CERT_AUTHENTICITY;
+
+  // Add pointer to cert to the list
+  list_add(state->head_certs, name, &recievedCert, sizeof(recievedCert), 1); 
+
+  struct callback_data_in data;
+  data.other = recievedCert;
+  data.state = state;
+
+  // Send queued messages
+  list_exec(state->head_msg_queue, msg->key.who, list_msg_send_callback, &data, 1);
+  return 0;  
+}
+
+
+// Store the cert attatched to a message
+static void cacheAttatchedCert(struct client_state* state, const struct api_msg* msg){
+  handle_attached_key(state, msg, msg->pub_msg.from);
+}
+
+// Verifies an incoming message
+static char verifyMessage(struct client_state* state, const struct api_msg* msg, const char* msgtext){
+  Node* n = list_find(state->head_certs, msg->priv_msg.from);
+
+  if(n == NULL) return 0;
+
+  X509* cert = ((X509**)n->contents)[0];
+
+  return crypto_RSA_verify(cert, msgtext, strnlen(msgtext, MAX_MSG_LEN_M1), msg->priv_msg.signature, MAX_ENCRYPT_LEN);
+}
+
+static void privMsg(struct client_state* state, const struct api_msg * msg){
   char buffer[26];
   formatTime(buffer, 26, msg->priv_msg.timestamp);
-  
+
+  cacheAttatchedCert(state, msg);
+
+  char* unencrpyted = crypto_RSA_privkey_decrypt(state->privkey, msg->priv_msg.frommsg);
+
+  if(!verifyMessage(state, msg, unencrpyted)) printf("Unsigned! ");
+
   //never print more than the respective maximum lengths.
   printf("%s %.*s: @%.*s %.*s\n", buffer, MAX_USER_LEN, 
-  msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, msg->priv_msg.msg);
+    msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, unencrpyted);
+  
+  free(unencrpyted);
 }
 
-static void pubMsg(const struct api_msg * msg){
+static void pubMsg(struct client_state* state, const struct api_msg * msg){
   char buffer[26];
+
+  cacheAttatchedCert(state, msg);
+
   formatTime(buffer, 26, msg->priv_msg.timestamp);
+
+  if(!verifyMessage(state, msg, msg->pub_msg.msg)) printf("Unsigned! ");
 
   //never print more than the respective maximum lengths.
   printf("%s %s: %s\n", buffer,
   msg->pub_msg.from, msg->pub_msg.msg);
+  
 }
 static void who(const struct api_msg * msg){
   printf("users:\n%s\n", msg->who.users);
 }
+
+static void loginAck(const struct api_msg* msg, struct client_state* state){
+  // If we already have a key, something has gone wrong
+  if(state->cert != NULL || state->privkey != NULL) return;
+  // If the message doesn't have a key-pair, something has gone wring
+  if(msg->certLen == 0 || msg->encPrivKeyLen == 0) return;
+
+  if(state->password == NULL) return;
+  if(state->username == NULL) return;
+
+  state->cert = crypto_parse_x509_string(msg->cert);
+
+  uint16_t outlen;
+  char* unencrpyted = crypto_aes_encrypt(msg->encPrivKey, msg->encPrivKeyLen, state->password, state->username, 0, &outlen);
+  
+  // Make sure its null terminated
+  unencrpyted[outlen-1] = '\0';
+
+  state->privkey = crypto_parse_RSA_priv_string(unencrpyted);
+  free(unencrpyted);
+
+  // Check if privkey matches pubkey (server can send fake certificate to try to listen to privmessages)
+  // I could not find a good method to do this, so verifying that encryption / decryption worked seemed like an OK solution
+
+  char testString[] = "this is a test string";
+  char encrypted[MAX_ENCRYPT_LEN];
+
+  crypto_RSA_pubkey_encrypt(encrypted, state->cert, testString, strlen(testString)+1);
+  char* out = crypto_RSA_privkey_decrypt(state->privkey, encrypted);
+
+  // Bad cert!
+  if(strcmp(testString, out) != 0){
+    printf("Error: Recieved invalid certificate from server!\n");
+    state->eof = 1;
+    free(out);
+    return;
+  }
+  free(out);
+}
+
 /**
  * @brief         Handles a message coming from server (i.e, worker)
  * @param state   Initialized client state
@@ -190,19 +308,27 @@ static int execute_request(
     switch (msg->type)
     {
     case ERR:
-    error(msg);
+      error(msg);
       break;
     case STATUS:
       status(msg);
       break;
     case PRIV_MSG:
-      privMsg(msg);
+      privMsg(state, msg);
       break;
     case PUB_MSG:
-      pubMsg(msg);
+      pubMsg(state, msg);
       break;
     case WHO:
       who(msg);
+      break;
+    case LOGINACK: 
+      // Login acks have a status
+      status(msg);
+      loginAck(msg, state);
+      break;
+    case KEY:
+      handle_attached_key(state, msg, msg->key.who);  
       break;
     default:
       printf("Some error happened %d\n", msg->type);
@@ -218,6 +344,8 @@ static int execute_request(
  */
 static int handle_server_request(struct client_state* state) {
   struct api_msg msg;
+  api_msg_init(&msg);
+
   int r, success = 1;
 
   assert(state);
@@ -239,7 +367,7 @@ static int handle_server_request(struct client_state* state) {
   }
 
   /* clean up state associated with the message */
-  api_recv_free(&msg);
+  api_msg_free(&msg);
   return success ? 0 : -1;
 }
 
@@ -287,8 +415,15 @@ static int client_state_init(struct client_state* state) {
   /* initialize UI */
   ui_state_init(&state->ui);
 
+  //initialize linked lists
+  state->head_certs = list_init();
+  state->head_msg_queue = list_init();
 
   return 0;
+}
+
+void list_clean_cert(Node* n, void* usr){
+  X509_free(*(X509**)n->contents);
 }
 
 static void client_state_free(struct client_state* state) {
@@ -298,6 +433,19 @@ static void client_state_free(struct client_state* state) {
 
   /* cleanup UI state */
   ui_state_free(&state->ui);
+
+  X509_free(state->cert);
+  RSA_free(state->privkey);
+
+  free(state->password);
+  free(state->username);
+
+  // Clean up linked lists
+  list_exec_all(state->head_certs, list_clean_cert, NULL, 0);
+
+  list_free(state->head_certs);
+  list_free(state->head_msg_queue);
+
 }
 
 static void usage(void) {
@@ -311,6 +459,7 @@ int main(int argc, char **argv) {
   uint16_t port;
   struct client_state state;
 
+
   /* check arguments */
   if (argc != 3) usage();
   if (parse_port(argv[2], &port) != 0) usage();
@@ -323,10 +472,12 @@ int main(int argc, char **argv) {
   if (fd < 0) return 1;
 
   /* initialize API */
-  // TODO: Verify server certificate
   api_state_init(&state.api, fd, TLS_client_method());
+  // verify server certificate
+  SSL_CTX_load_verify_locations(state.api.ctx, "ttpkeys/ca-cert.pem", NULL);
+  SSL_set_verify(state.api.ssl, SSL_VERIFY_PEER, NULL);
   set_nonblock(fd);
-
+    
   int res;
   // SSL handshake
   if((res = ssl_block_connect(state.api.ssl, state.api.fd)) != 1){

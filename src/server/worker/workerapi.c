@@ -11,22 +11,6 @@
 
 #define LOGIF(x, y, ...)if(y<0) printf(x, __VA_ARGS__);
 
-/// @brief Checks if a string has a null byte
-/// @param str the string to check
-/// @param len the length of a string
-/// @return 1 if so, 0 otherwise
-static int check_null_byte(const char* str, uint32_t len) {
-  int hasNullByte = 0;
-  for (int i = len - 1; i >= 0; i++) {
-    if (str[i] == '\0') {
-      hasNullByte = 1;
-      break;
-    }
-  }
-
-  return hasNullByte;
-}
-
 /// @brief Checks if the client is logged in
 /// @param state worker state
 /// @return 1 if logged in, 0 otherwise
@@ -52,32 +36,6 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
 
   if (!(res = authenticate_request(state, msg))) return res;
 
-  // Type check
-  switch (msg->type) {
-    case PRIV_MSG:
-      if (!check_null_byte(msg->priv_msg.to, MAX_USER_LEN))
-        return ERR_INVALID_API_MSG;
-    case PUB_MSG:
-      if (!check_null_byte(msg->priv_msg.msg, MAX_MSG_LEN))
-        return ERR_INVALID_API_MSG;
-      // We dont use from so we dont need to check it
-    case LOGIN:
-    case REG:
-      if (!check_null_byte(msg->reg.username, MAX_USER_LEN))
-        return ERR_INVALID_API_MSG;
-      break;
-
-    case EXIT:
-    case WHO:
-      break;
-
-    case ERR:     // Client cannot send err!
-    case STATUS:  // Client cannot send status!
-    default:
-      return ERR_INVALID_API_MSG;
-      break;
-  }
-
   // User must be logged in unless they're trying to exit or login
   if (msg->type != LOGIN && msg->type != EXIT && msg->type != REG) {
     if (!is_logged_in(state)) return ERR_NO_USER;
@@ -85,6 +43,22 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
 
   return 1;
 }
+
+static int prep_msg_share(struct worker_state* state, struct api_msg* msg){
+  // Attach sender cert if it wasn't yet sent
+  if(list_add(state->sentCerts, msg->priv_msg.from, NULL, 0, 1) == 0){  
+    db_add_cert(&state->dbConn, msg, msg->priv_msg.from);
+  }
+
+  return state->apifuncs.send(&state->api, msg) == 1 ? 0 : -1;
+}
+
+int notify(struct worker_state* state) {
+  if(is_logged_in(state))
+    db_get_messages(&state->dbConn, state, state->uid, prep_msg_share, &state->lastviewed);
+
+  return 0;
+};
 
 
 /**
@@ -140,6 +114,8 @@ int worker_state_init(struct worker_state* state, int connfd,
   SSL_use_certificate_file(state->api.ssl, "serverkeys/cert.pem", SSL_FILETYPE_PEM);
   SSL_use_PrivateKey_file(state->api.ssl, "serverkeys/priv.pem", SSL_FILETYPE_PEM);
 
+  state->sentCerts = list_init();
+
   return 0;
 }
 
@@ -149,6 +125,7 @@ void worker_state_free(struct worker_state* state) {
 
   db_state_free(&(state->dbConn));
 
+  list_free(state->sentCerts);
 
   /* close file descriptors */
   close(state->server_fd);
@@ -158,6 +135,7 @@ void worker_state_free(struct worker_state* state) {
 
 int handle_client_request(struct worker_state* state) {
   struct api_msg msg;
+  api_msg_init(&msg);
   int r, errcode = 0;
 
   assert(state);
@@ -167,12 +145,16 @@ int handle_client_request(struct worker_state* state) {
   if (r == -1) {
     printf("server receive eof\n");
     state->eof = 1;
+    api_msg_free(&msg);
     return 0;
   }
 
   API_PRINT_MSG("recv", msg);
 
-  if(msg.type==NONE) return 0;
+  if(msg.type==NONE) {
+    api_msg_free(&msg);
+    return 0;
+  }
 
   /* execute request */
   if ((errcode = verify_request(state, &msg)) == 1) {
@@ -188,7 +170,7 @@ int handle_client_request(struct worker_state* state) {
     state->apifuncs.send(state, &msg);
   } 
   /* clean up state associated with the message */
-  api_recv_free(&msg);
+  api_msg_free(&msg);
 
   return errcode < 0;
 }
@@ -200,11 +182,29 @@ int execute_request(struct worker_state* state,
   int doResponse = 0;
 
   struct api_msg responseData;
+  api_msg_init(&responseData);
 
   switch (msg->type) {
+    case KEY:
+      res = db_add_cert(&state->dbConn, &responseData, msg->key.who);
+      if(res == ERR_NO_USER){
+         res = ERR_RECIPIENT_INVALID;
+      }else if(res >= 0){
+        doResponse = 1;
+        responseData.type = KEY;
+        memcpy(responseData.key.who, msg->key.who, MAX_USER_LEN);
+
+        list_add(state->sentCerts, msg->key.who, NULL, 0, 1);
+      }
+      break;
     case PRIV_MSG:
+      res = db_add_priv_message(&state->dbConn, msg, state->uid);
+      
+      if(res >= 0)
+        notify_workers(state);
+      break;
     case PUB_MSG:
-      res = db_add_message(&state->dbConn, msg, state->uid);
+      res = db_add_pub_message(&state->dbConn, msg, state->uid);
 
       if(res >= 0)
         notify_workers(state);
@@ -240,12 +240,15 @@ int execute_request(struct worker_state* state,
       res = db_login(&state->dbConn, msg);
 
       if(res >= 0){
-        responseData.type = STATUS;
+        responseData.type = LOGINACK;
         strcpy(responseData.status.statusmsg, "authentication succeeded");
 
         doResponse = 1;
 
         setUser(state, res, msg->login.username);
+        // Add the users key pair to the acknowledgement
+        db_add_cert(&state->dbConn, &responseData, msg->login.username);
+        db_add_privkey(&state->dbConn, &responseData, msg->login.username);
       } 
       break;
     case REG: 
@@ -257,12 +260,16 @@ int execute_request(struct worker_state* state,
       res = db_register(&state->dbConn, msg);
 
       if(res >= 0){ 
-        responseData.type = STATUS;
+        responseData.type = LOGINACK;
         strcpy(responseData.status.statusmsg, "registration succeeded");
         
         doResponse = 1;
 
         setUser(state, res, msg->reg.username);
+
+        // Add the users key pair to the acknowledgement
+        db_add_cert(&state->dbConn, &responseData, msg->reg.username);
+        db_add_privkey(&state->dbConn, &responseData, msg->reg.username);
       }
       break; 
     case EXIT:
@@ -276,8 +283,11 @@ int execute_request(struct worker_state* state,
   LOGIF("[execute_request] error: %d\n", res, res);
 
   if (doResponse) {
-    API_PRINT_MSG("response", responseData);
-    state->apifuncs.send(state, &responseData);
+    API_PRINT_MSG("send", responseData);
+    state->apifuncs.send(&state->api, &responseData);
   }
+
+  api_msg_free(&responseData);
+
   return res;
 }

@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string.h>
 
+
 #include <unistd.h>
 
 #include "api.h"
@@ -20,22 +21,45 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
 
   int res = ssl_block_read(state->ssl, state->fd, msg, sizeof(struct api_msg));
 
-  if(res > 0){
-    return 1;
-  }else{
-    return -1;
+  if(res <= 0) return -1;
+
+  msg->encPrivKey = NULL;
+  msg->cert = NULL;
+
+  // Recieve additional data
+  if(msg->encPrivKeyLen){
+    msg->encPrivKey = malloc(msg->encPrivKeyLen);
+    res = ssl_block_read(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
+    if(res <= 0) return -1;
+    if(res != msg->encPrivKeyLen) return -1; // Recieved wrong length, malformed packet = drop peer
   }
 
-  return -1;
+  if(msg->certLen){
+    msg->cert = malloc(msg->certLen);
+    res = ssl_block_read(state->ssl, state->fd, msg->cert, msg->certLen);
+    if(res <= 0) return -1;
+    if(res != msg->certLen) return -1; // Recieved wrong length, malformed packet = drop peer
+    
+    // Null terminate so we can treat as string safely
+    msg->cert[msg->certLen-1] = '\0';
+  }
+  return 1;
+}
+
+void api_msg_init(struct api_msg* msg){
+  memset(msg, 0, sizeof(struct api_msg));
 }
 
 /**
  * @brief         Clean up information stored in @msg
  * @param msg     Information about message to be cleaned up
  */
-void api_recv_free(struct api_msg* msg) {
+void api_msg_free(struct api_msg* msg) {
 
   assert(msg);
+
+  if(msg->encPrivKey) free(msg->encPrivKey);
+  if(msg->cert) free(msg->cert);
 }
 
 /// @brief Sends msg over the wire
@@ -50,7 +74,19 @@ int api_send(struct api_state* state, struct api_msg* msg){
   int res = ssl_block_write(state->ssl, state->fd, msg, sizeof(struct api_msg));
 
   if(res <= 1) return -1;
+
+  // Send additional data
+  if(msg->encPrivKeyLen){
+    res = ssl_block_write(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
+    if(res <= 1) return -1;
+  }
   
+  // Send additional data
+  if(msg->certLen){
+    res = ssl_block_write(state->ssl, state->fd, msg->cert, msg->certLen);
+    if(res <= 1) return -1;
+  } 
+
   return 1;
 }
 
@@ -62,6 +98,7 @@ void api_state_free(struct api_state* state) {
   // Clean up SSL
   SSL_free(state->ssl);
   SSL_CTX_free(state->ctx);
+  
   assert(state);
 }
 
@@ -82,6 +119,6 @@ void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method) {
   
   state->ctx = SSL_CTX_new(method);
   state->ssl = SSL_new(state->ctx);
-  
+
   SSL_set_fd(state->ssl,  fd);
 }
