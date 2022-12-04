@@ -87,7 +87,6 @@ int protht_recv(struct worker_state* wstate, struct api_msg* msg){
         // Promote to websocket workerapi (Which can actually handle the app)
         wstate->apifuncs.recv = protwb_recv;
         wstate->apifuncs.send = protwb_send;
-        wstate->apifuncs.handle_notification = protwb_notify;
 
         // Clean up
         free(code);

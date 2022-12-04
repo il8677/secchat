@@ -50,7 +50,7 @@ static int prep_msg_share(struct worker_state* state, struct api_msg* msg){
     db_add_cert(&state->dbConn, msg, msg->priv_msg.from);
   }
 
-  return state->apifuncs.send(&state->api, msg) == 1 ? 0 : -1;
+  return state->apifuncs.send(state, msg) == 1 ? 0 : -1;
 }
 
 int notify(struct worker_state* state) {
@@ -284,7 +284,7 @@ int execute_request(struct worker_state* state,
 
   if (doResponse) {
     API_PRINT_MSG("send", responseData);
-    state->apifuncs.send(&state->api, &responseData);
+    state->apifuncs.send(state, &responseData);
   }
 
   api_msg_free(&responseData);

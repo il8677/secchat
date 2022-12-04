@@ -358,7 +358,7 @@ static int handle_incoming(struct server_state* state) {
   }
   /* handle ready file descriptors */
   if (FD_ISSET(state->sockfd, &readfds)) {
-    if (handle_connection(state, state->sockfd, (struct api_callbacks){api_send, api_recv}) != 0) success = 0;
+    if (handle_connection(state, state->sockfd, (struct api_callbacks){protc_send, protc_recv}) != 0) success = 0;
   }
   
   if (FD_ISSET(state->httpsock, &readfds)){

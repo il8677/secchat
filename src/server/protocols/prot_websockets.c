@@ -60,7 +60,7 @@ char* protwb_processKey(const char *str){
     uint8_t hashResult[SHA_DIGEST_LENGTH];
     char* b64result;
 
-    hash(buffer, concatLen, hashResult);
+    crypto_hash(buffer, concatLen, hashResult);
     Base64Encode(hashResult, SHA_DIGEST_LENGTH, &b64result);
 
     free(buffer);
@@ -76,12 +76,12 @@ int wb_api_to_json_send(struct api_state* state, struct api_msg* msg){
     return res == 0;
 }
 
-static int msg_query_cb(struct api_state* state, struct api_msg* msg){
-    return wb_api_to_json_send(state, msg) == 1 ? 0 : -1;
+static int msg_query_cb(struct worker_state* state, struct api_msg* msg){
+    return wb_api_to_json_send(&state->api , msg) == 1 ? 0 : -1;
 }
 
 int protwb_notify(struct worker_state* state){
-    db_get_messages(&state->dbConn, &state->api, state->uid, msg_query_cb, &state->lastviewed);
+    db_get_messages(&state->dbConn, state, state->uid, msg_query_cb, &state->lastviewed);
     return 0;
 }
 
