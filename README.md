@@ -12,7 +12,7 @@ Depending on the command different steps are taken.
 -   ### register (input_handle_register| ui.c)    
     When register is called we first check if the username has already been taken or not and if the password and/or the username is valid (not empty). We then hash the password with the username as salt, generate a private/public key pair and request a certificate from the CA. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server. (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it so whatever.) 
 
--   ### login  (input_handle_login| ui.c)     TODO: verify that the private key is actually correct w certificate? whats going on in loginack 
+-   ### login  (input_handle_login| ui.c)  
     After login is called we hash the password with the username as salt and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and then encrypt and decrypt a test string to verify the keys. This ensures that we have the same keypair every time even when logging in from different devices. (loginAck| client.c) 
     
 -   ### private message (input_handle_privmsg| ui.c)
@@ -126,3 +126,17 @@ The server has a maximum number of clients it supports at a time making it hard 
 
 ### The programs must be unable to modify any files except for chat.db and the contents of the clientkeys and clientkeys directories, or any operating system settings, even if Mallory attempts to force it to do so.  TODO: do we have anything in place for this?
 
+
+## possible attacks and their defenses
+
+### Man-in-the-middle
+Our clients and server exchange certificates issued by the CA which is used to authenticate messages send by the owner of that certificate. An invalid certificate will not be accepted and we can therefore identify this type of attack.
+
+### Buffer overflows
+When handling input from a user we have several security checks in place which make sure the input does not exceed certain bounderies that could trigger potential buffer overflows. Input checks include but are not limited to: the amount, length, empty and type of arguments to make sure the input of the client is valid.
+
+### Injection
+ Besides the aformentioned buffer overflow checks, we make sure any SQL input in message from the client are not executed during database handling. (See database section)
+
+### Padding oracle attack
+The defense of this attack is handled by openSSL and achieved through random padding.
