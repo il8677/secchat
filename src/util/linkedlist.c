@@ -78,8 +78,8 @@ void list_exec_all(Node* head, list_cb_t cb, void* userData, char doDelete){
             Node* temp;
             temp = head->next;
             head->next = head->next->next;
-            if(head->next == NULL) return;
             node_free(temp);
+            if(head->next == NULL) return;
         }
         head = head->next;
     }
