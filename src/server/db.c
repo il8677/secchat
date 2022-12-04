@@ -89,7 +89,6 @@ void db_create(struct db_state* state){
         FOREIGN KEY(id) REFERENCES messages(id))", NULL, NULL);
 }
 
-// TODO: Cleanup this function
 int db_get_messages(struct db_state* state, struct worker_state* astate, int uid, int(*cb) (struct worker_state*, struct api_msg*), timestamp_t* lastviewed){
 
     // Big statement, creates a union between the public messages, private messages where the user is the sender, and private messages where the user is the recipient,
@@ -103,7 +102,7 @@ int db_get_messages(struct db_state* state, struct worker_state* astate, int uid
         LEFT JOIN users AS su ON su.id == q1.sender \
         LEFT JOIN users AS ru ON ru.id == q1.recipient \
         WHERE q1.id > %i;", 
-        uid, uid, *lastviewed);
+        uid, uid, *lastviewed); // TODO: Sort this
 
 
     sqlite3_stmt* statement;

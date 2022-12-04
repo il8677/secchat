@@ -53,7 +53,6 @@ char* crypto_aes_encrypt(char* bytes, uint16_t byteslen, const char* password, c
     const EVP_CIPHER* type = EVP_aes_128_cbc();
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 
-    // TODO: Use salt as iv
     uint8_t* key = makeBuffer(password, EVP_CIPHER_key_length(type));
     uint8_t* iv = makeBuffer(ivIn, EVP_CIPHER_iv_length(type));
 

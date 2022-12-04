@@ -443,7 +443,7 @@ static void client_state_free(struct client_state* state) {
   // Clean up linked lists
   list_exec_all(state->head_certs, list_clean_cert, NULL, 0);
 
-  list_free(state->head_certs); // TODO: need &? :)
+  list_free(state->head_certs);
   list_free(state->head_msg_queue);
 
 }
