@@ -5,9 +5,9 @@
 
 #include <openssl/ssl.h>
 
-void crypto_hash(char* data, uint32_t len, unsigned char* output);
+void crypto_hash(const char* data, uint32_t len, unsigned char* output);
 
-char* crypto_aes_encrypt(char* bytes, uint16_t bytesLen, const char* password, char encrypt, uint16_t* outLen);
+char* crypto_aes_encrypt(char* bytes, uint16_t bytesLen, const char* password, const char* iv, char encrypt, uint16_t* outLen);
 
 /// @brief Asks the TTP to generate a certificate and private key for user
 /// @param name The name of the user

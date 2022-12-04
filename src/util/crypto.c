@@ -8,9 +8,8 @@
 #include <string.h>
 #include <openssl/rsa.h>
 
-// TODO: Use salt
 // https://www.openssl.org/docs/man1.1.1/man3/SHA512_Init.html
-void crypto_hash(char* data, uint32_t len, unsigned char* output){
+void crypto_hash(const char* data, uint32_t len, unsigned char* output){
     SHA_CTX ctx;
 
     SHA1_Init(&ctx);
@@ -42,7 +41,7 @@ static uint8_t* makeBuffer(const char* str, size_t len){
 }
 
 // This function is a mess, but it encrypts the input using the users password
-char* crypto_aes_encrypt(char* bytes, uint16_t byteslen, const char* password, char encrypt, uint16_t* outLen){
+char* crypto_aes_encrypt(char* bytes, uint16_t byteslen, const char* password, const char* ivIn, char encrypt, uint16_t* outLen){
     *outLen = 0;
 
     // 16 bytes / block, round up to find number of blocks, * 16 for final byttes;
@@ -56,7 +55,7 @@ char* crypto_aes_encrypt(char* bytes, uint16_t byteslen, const char* password, c
 
     // TODO: Use salt as iv
     uint8_t* key = makeBuffer(password, EVP_CIPHER_key_length(type));
-    uint8_t* iv = makeBuffer(password, EVP_CIPHER_iv_length(type));
+    uint8_t* iv = makeBuffer(ivIn, EVP_CIPHER_iv_length(type));
 
     EVP_CipherInit(ctx, type, key, iv, encrypt);
     EVP_CipherUpdate(ctx, (unsigned char*)output, &outputLen, (unsigned char*)bytes, byteslen);

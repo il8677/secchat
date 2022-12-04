@@ -28,6 +28,7 @@ struct client_state {
   struct Node* head_msg_queue;
 
   char* password; // The password entered by the user (needed for privkey decryption)
+  char* username; // The username entered by the user (needed for privkey decryption)
 
   X509* cert;
   RSA* privkey;
@@ -268,7 +269,7 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
   state->cert = crypto_parse_x509_string(msg->cert);
 
   uint16_t outlen;
-  char* unencrpyted = crypto_aes_encrypt(msg->encPrivKey, msg->encPrivKeyLen, state->password, 0, &outlen);
+  char* unencrpyted = crypto_aes_encrypt(msg->encPrivKey, msg->encPrivKeyLen, state->password, state->username, 0, &outlen);
   
   // Make sure its null terminated
   unencrpyted[outlen-1] = '\0';
