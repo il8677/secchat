@@ -1,5 +1,5 @@
 #/bin/python3
-import ssl
+import shutil
 import os
 import argparse
 
@@ -19,7 +19,7 @@ def generateCA():
 
 def generateCert(dir, name):
     # Generate request
-    os.system(f"openssl req -new -key {dir}/priv.pem -out {dir}/csr.pem -nodes -subj '/CN={name}\.secchat\.com' 2> /dev/null")
+    os.system(f"openssl req -new -key {dir}/priv.pem -out {dir}/csr.pem -nodes -subj '/CN={name}' 2> /dev/null")
     
     # CA signs
     os.system(f"openssl x509 -req -CA {ttpdir}/ca-cert.pem -CAkey {ttpdir}/priv.pem -CAcreateserial -in {dir}/csr.pem -out {dir}/cert.pem 2> /dev/null")
@@ -47,6 +47,8 @@ if __name__ == "__main__":
     elif args.ca:
         generateKeyPair(ttpdir)
         generateCA()
+
+        shutil.copyfile(f"{ttpdir}/ca-cert.pem", f"{clientdir}/ca.cert")
     elif args.c:
         generateKeyPair(clientdir)
         generateCert(clientdir, args.c)

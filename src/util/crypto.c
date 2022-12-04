@@ -159,3 +159,33 @@ int crypto_RSA_verify(X509* key, const char* msg, uint16_t msglen, const char* s
 
     return r;
 }
+
+int crypto_verify_x509(X509* target, const char* name){
+    // This will "leak", but its supposed to live the lifetime of the program so that's ok
+    static X509* cacert = NULL; 
+
+    // Load cert if not loaded
+    if(cacert == NULL){
+        char* certfile;
+        read_file(TTP_PATH, &certfile);
+
+        cacert = crypto_parse_x509_string(certfile);
+        
+        free(certfile);
+    }
+
+    // We do not need to verify the CA cert, it's trusted
+    EVP_PKEY* cakey = X509_get_pubkey(cacert);
+
+    if(!X509_verify(target, cakey)) return 0;
+
+    X509_NAME* name = X509_get_subject_name(target);
+    int nameLen = X509_NAME_get_text_by_NID(name, NID_commonName, NULL, 0) + 1; // TODO: What happens with no name?
+
+    char *cn = malloc(nameLen+1);
+    X509_NAME_get_text_by_NID(name, NID_commonName, cn, nameLen+1);
+
+    free(cn);
+
+    return !strcmp(cn, name);
+}

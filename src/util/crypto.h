@@ -5,6 +5,8 @@
 
 #include <openssl/ssl.h>
 
+#define TTP_PATH "clientkeys/ca.cert"
+
 void crypto_hash(const char* data, uint32_t len, unsigned char* output);
 
 char* crypto_aes_encrypt(char* bytes, uint16_t bytesLen, const char* password, const char* iv, char encrypt, uint16_t* outLen);
@@ -29,5 +31,7 @@ char* crypto_RSA_privkey_decrypt(RSA* key, const char* msg);
 void crypto_RSA_sign(RSA* key, const char* msg, uint16_t msglen, unsigned char* output);
 
 int crypto_RSA_verify(X509* key, const char* msg, uint16_t msglen, const char* signature, uint16_t signaturelen);
+
+int crypto_verify_x509(X509* target, const char* name);
 
 #endif
