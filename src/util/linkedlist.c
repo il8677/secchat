@@ -63,8 +63,8 @@ void list_exec(Node* head, const char* key, list_cb_t cb, void* userData, char d
                 Node* temp;
                 temp = head->next;
                 head->next = head->next->next;
-                if(head->next == NULL) return;
                 node_free(temp);
+                if(head->next == NULL) return;
             }
         }
         head = head->next;
