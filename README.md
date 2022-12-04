@@ -1,7 +1,7 @@
 # walkthrough
 
-## client initialization ?? not sure if top of the page is the place for this
-When we initialize the client we create two linked lists. One we use to store certificates from other clients to look up public keys for when we are private messaging them. The other is used as a queue to temporarily store the private message we were about to send but for which we do not have the recipients certificate yet. A special KEY request is then send to the server which will provide us with the certificate of the user we want to privately communicate with.
+## client initialization 
+When we initialize the client we connect to the server and check the server's certificate. If everything is fine we start the ssl handsake. when initializing we also create two linked lists. One we use to store certificates from other clients to look up public keys for when we are private messaging them or decrypting public messages. The other is used as a queue to temporarily store the private message we were about to send but for which we do not have the recipients certificate yet. A special KEY request is then send to the server which will provide us with the certificate of the user we want to privately communicate with.
 
 ## parsing input (client_process_command, client.c)
 The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct within the api_message. If the message is too long, the command is invalid or the amount of arguments is invalid we give an error and ask them to try again. Depending on the command a handler function is then called. 
@@ -9,11 +9,11 @@ The client starts with seperating the command from the message in "client_proces
 ## preparing message
 Depending on the command different steps are taken.
 
--   ### register (input_handle_register| ui.c)    TODO: do we use salt?
-    When register is called we first check if the username has already been taken or not and if the password and/or the username is valid (not empty). We then hash the password, request a certificate from the CA and generate a private key. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server. (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it so whatever.) 
+-   ### register (input_handle_register| ui.c)    
+    When register is called we first check if the username has already been taken or not and if the password and/or the username is valid (not empty). We then hash the password with the username as salt, generate a private/public key pair and request a certificate from the CA. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server. (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it so whatever.) 
 
--   ### login  (input_handle_login| ui.c)     TODO: salt? verify that the private key is actually correct w certificate?
-    After login is called we hash the password and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and verify the certificate with the key. This ensures that we have the same keypair every time even when logging in from different devices. (loginAck| client.c) 
+-   ### login  (input_handle_login| ui.c)     TODO: verify that the private key is actually correct w certificate? whats going on in loginack 
+    After login is called we hash the password with the username as salt and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and then encrypt and decrypt a test string to verify the keys. This ensures that we have the same keypair every time even when logging in from different devices. (loginAck| client.c) 
     
 -   ### private message (input_handle_privmsg| ui.c)
     To send a private message we have to get the public key of the receipient so we can encode the message (using RSA). We first look through our linked list containing keys. If the key is not found in the linked list we request the key from the server and put the to be transmitted message in a queue (linked list) so we can send the message whenever we receive the key. When we receive the key (execute_request, handle_key| client.c) the authenticity of the certificate is verified. The key is then added to the list of keys and we go through the queue to see if there is a request we can fullfil now with the key. Continuing this, regardless of whether we already had the key or just got the key from the server we sign the message(hash and encrypt with our private key), encrypt s copy of the message with the recipients public key and a copy of the message with our own public key. These messages and a signed version of the message are then send to the server. 
@@ -74,11 +74,12 @@ Depending on the message recieved, and if it is server or clientside, the messag
 
 # server
 ## layered security
-The entire attack surface was limited to the initial call to verify_request; when the packet leaves this function, it has the proverbial stamp of approval. However, each module is designed to be self sufficient, so the msg will be further checked with calls to the database API, to ensure, for example, that the registration handler isn't handling a login message. The strings are also assumed to be malformed, and null termination is explicity set to avoid overflowing into the database, this is despite the fact that null termination is explicitly checked for in the verify_request function.
+The entire attack surface was limited to the initial call to verify_request; when the packet leaves this function, it has the proverbial stamp of approval. However, each module is designed to be self sufficient, so the message will be further checked with calls to the database API, to ensure, for example, that the registration handler isn't handling a login message. The strings are also assumed to be malformed, and null termination is explicity set to avoid overflowing into the database, this is despite the fact that null termination is explicitly checked for in the verify_request function.
 
 ## request verification
 The verify-request function double checks if a request if safe.
-### request authentication
+
+### request authentication TODO: ?
 
 ### sanity check
 The struct needs to be as safe as we created it ourselves, so null termination of strings is checked. since the struct is a union, a lot of the checks are code-duplicated, but keeping the checks seperate encourages explicit checks for other factors if needed.
@@ -89,8 +90,8 @@ When parsing the input we check if the the command is valid, and the message is 
 
 ## cryptography
 
-### message encryption TODO: certificate verification with ca
-All messages have a signature which consists of the hashed message which is encrypted with the senders private key. Private messages are send to the server in twofold where one of the messages is encrypted with our own public key and one message is encrypted with the recipients public key. This ensures that all messages are end-to-end encrypted as they are stored encrypted in the server and the server does not have the private key to decrypt them. 
+### message encryption TODO: we discard the message if signature is invalid right
+All messages have a signature which consists of the hashed message which is encrypted with the senders private key. Private messages are send to the server in twofold where one of the messages is encrypted with our own public key and one message is encrypted with the recipients public key. This ensures that all messages are end-to-end encrypted as they are stored encrypted in the server and the server does not have the private key to decrypt them. When receiving messages the client always checks if the signature is valid with help of the certificate which the client also verifies. If the signature is invalid we discard the message.
 
 ## displaying messages
 When displaying the messages we make sure to never print more characters than the respective max length.
@@ -108,17 +109,20 @@ This is done by encrypting private messages end-to-end. The server stores encryp
 Every message is signed and contains a certificate with the public key to decrypt it. The certificate is requested from the CA which we assume is trustworthy. Whenever we receive a message we verify that the certificate is correct and belongs to the person who actually sent the message. We then hash the message and compare it to the decryption of the encrypted hash (the signature). Since mallory cannot forge such a valid certificate we can be sure that the actual sender is who they say they are.
 
 ### Mallory cannot modify messages sent by other users. TODO: if the message got tampered with do we still show it?
-Again this comes down to the signing. If even only a single character gets changed the hash of the message will not be the same and the signature will not be correct. Thus if Mallory were to change the message the user would know the message got changed and would not show it.
+Again this comes down to the signing. If even only a single character gets changed the hash of the message will not be the same and the signature will not be correct. Thus if Mallory were to change the message the client would know the message got changed and would not show it.
 
-• Mallory cannot find out users’ passwords, private keys, or private messages
-(even if the server is compromised).
-• Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on.
-• Mallory cannot leak or corrupt data in the client or server programs.
-• Mallory cannot crash the client or server programs.
-• The programs must never expose any information from the systems they
-run on, beyond what is required for the program to meet the requirements
-in the assignments.
-6
-• The programs must be unable to modify any files except for chat.db
-and the contents of the clientkeys and clientkeys directories, or any
-operating system settings, even if Mallory attempts to force it to do so.
+### Mallory cannot find out users’ passwords, private keys, or private messages (even if the server is compromised).
+The database only stores hashed salted passwords. Even if the server is compromised Mallory cannot do much with this information as Mallory cannot undo the hash. Frequency analysis is also not possible due to the salt. Private keys are stored encrypted with the password. Assuming that the password is indeed safe there is no way for Mallory to decrypt the private key. Then assumming that both the password and the private key are safe Mallory cannot decrypt the private messages as it does not have the private key.
+
+### Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on. TODO: not sure how
+
+### Mallory cannot leak or corrupt data in the client or server programs. TODO: is this an actual good answer?
+Well assuming that Mallory can compromise the server she actually could corrupt the data. However because of the signature the user/client would know that the data has been corrupted.  
+
+### Mallory cannot crash the client or server programs. TODO: do we have anything in place to prevent the client from crashing?
+The server has a maximum number of clients it supports at a time making it hard for Mallory to overwork the server by connnecting lots of clients. 
+
+### The programs must never expose any information from the systems they run on, beyond what is required for the program to meet the requirements in the assignments. TODO: actual answer
+
+### The programs must be unable to modify any files except for chat.db and the contents of the clientkeys and clientkeys directories, or any operating system settings, even if Mallory attempts to force it to do so.  TODO: do we have anything in place for this?
+
