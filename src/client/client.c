@@ -270,7 +270,7 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
   // If the message doesn't have a key-pair, something has gone wrong
   if(msg->certLen == 0 || msg->encPrivKeyLen == 0) return;
   // If the username or pass was not set, something has gone wrong
-  if(state->password == NULL, state->username == NULL) return;
+  if(state->password == NULL || state->username == NULL) return;
 
   state->cert = crypto_parse_x509_string(msg->cert);
 
