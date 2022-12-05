@@ -18,17 +18,6 @@ function hexToBytes(hex) {
     return bytes;
 }
 
-// FROM CRYPTO-JS
-function bytesToHex(bytes) {
-    for (var hex = [], i = 0; i < bytes.length; i++) {
-        var current = bytes[i] < 0 ? bytes[i] + 256 : bytes[i];
-        hex.push((current >>> 4).toString(16));
-        hex.push((current & 0xF).toString(16));
-    }
-    return hex.join("");
-}
-
-
 // Returns bytes of signature
 function sign(privkeyPEM, msg){
     var sig = new JKUR.crypto.Signature({"alg": "SHA1withRSA"});
@@ -75,7 +64,9 @@ function RSAKeyFromCert(certPEM){
 }
 
 function RSAKeyFromPEM(keyPEM){
-    return KJUR.RSAKey.readPrivateKeyFromPEMString(keyPEM);
+    var key = new RSAKey();
+    key.readPrivateKeyFromPEMString(keyPEM);
+    return key;
 }
 
 // Encrypts message, returns bytes
@@ -84,7 +75,7 @@ function rsaEncrypt(keyCertPEM, msg){
 }
 
 function rsaDecrypt(privkeyPEM, msgBytes){
-    return KJUR.crypto.Cipher.decrypt(bytesToHex(msgBytes), RSAKeyFromPEM(keyPEM), "RSAOAEP");
+    return KJUR.crypto.Cipher.decrypt(base64ToHex(msgBytes), RSAKeyFromPEM(privkeyPEM), "RSAOAEP");
 }
 
 function aesDecrypt(iv, password, encText){
