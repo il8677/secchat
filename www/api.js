@@ -112,9 +112,8 @@ function getPrivMsg(msg, to){
 }
 
 function getPubMsg(msg){
-    msg = nullpad(msg, MAX_MSG_LEN);
-
     const signature = sign(privkey, msg);
+    msg = nullpad(msg, MAX_MSG_LEN);
 
     const b = new Blob([
         new Uint32Array([msgtype.PUB_MSG]),         // Type
