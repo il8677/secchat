@@ -25,6 +25,8 @@ const MAX_MSG_LEN = 160;
 const MAX_USER_LEN = 10;
 const HASH_OUT_LEN = 20;
 
+const SIZEOF_APIMSG = 832;
+
 const timestampSize = 8; 
 
 // Adapted from https://stackoverflow.com/questions/11177153/null-padding-a-string-in-javascript
@@ -35,6 +37,11 @@ function nullpad( str, len ) {
     }
 
     return str + Array( len-str.length + 1).join("\x00");
+}
+
+// Fills the rest of the api_msg bytes
+function fillBytes(b){
+    return new Blob([b, SIZEOF_APIMSG-b.size])
 }
 
 // Functions to format binary that represents api_msg, it was this or to parse JSON in C, so this felt like the lesser evil
@@ -53,7 +60,7 @@ function getPrivMsg(msg, to){
         new String(to)
     ]);
 
-    return b;
+    return fillBytes(b);
 }
 
 function getPubMsg(msg){
@@ -66,13 +73,13 @@ function getPubMsg(msg){
         new String(msg)                      // msg
     ]);
 
-    return b;
+    return fillBytes(b);
 }
 
 function getWho(){
     const b = new Blob([new Uint32Array([msgtype.WHO])]);
 
-    return b;
+    return fillBytes(b);
 }
 
 function getLogin(username, password){
@@ -87,7 +94,7 @@ function getLogin(username, password){
         new Uint8Array(password)
     ]);
 
-    return b;
+    return fillBytes(b);
 }
 
 function getReg(username, password){
@@ -102,7 +109,7 @@ function getReg(username, password){
         new Uint8Array(password)
     ]);
 
-    return b;
+    return fillBytes(b);
 }
 
 function sendData(data){
