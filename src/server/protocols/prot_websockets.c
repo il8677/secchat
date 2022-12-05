@@ -34,11 +34,6 @@ int send_header(struct api_state* state, uint64_t length, char opcode){
 
     header[1] = len1;
     
-    printf("Writing header len %d\n", headerLen);
-    for(int i = 0; i < headerLen; i++){
-        printf("%x ", header[i]);
-    }
-    printf("\n");
     return ssl_block_write(state->ssl, state->fd, header, headerLen);
 }
 
@@ -93,7 +88,6 @@ int protwb_notify(struct worker_state* state){
 }
 
 int protwb_send(struct worker_state* state, struct api_msg* msg){
-    API_PRINT_MSG("[websockets] Sending", (*msg));
     return wb_api_to_json_send(&state->api, msg);
 }
 

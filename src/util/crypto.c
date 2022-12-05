@@ -42,7 +42,6 @@ int Base64Encode(const unsigned char* buffer, size_t length, char** b64text) { /
 	BIO_set_close(bio, BIO_NOCLOSE);
 	BIO_free_all(bio);
     
-    printf("B64 output inlen %ld outlen %ld data: %.*s\n", length, (*bufferPtr).length + 1, (int)(*bufferPtr).length + 1, (*bufferPtr).data);
     // Add null terminator (kinda inefficient, but only used for web)
     BUF_MEM_grow(bufferPtr, (*bufferPtr).length + 1);
     (*bufferPtr).data[(*bufferPtr).length] = '\0'; 
