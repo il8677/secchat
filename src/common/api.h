@@ -19,7 +19,6 @@
 
 #define MAX_CONNECTIONS 16
 
-#define API_DEBUG
 #ifdef API_DEBUG
   #define API_PRINT_MSG(dmsg, apimsg) switch(apimsg.type){\
     case NONE: printf("["dmsg"] None\n"); break;\

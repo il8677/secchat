@@ -46,7 +46,6 @@ int protht_notify(struct worker_state* n){ // HTTP should never notify
 int protht_send(struct worker_state* wstate, struct api_msg* msg){ // HTTP should never send
     return 1;
 }
-#define ROUTE_DEBUG
 
 int protht_recv(struct worker_state* wstate, struct api_msg* msg){
     #ifdef ROUTE_DEBUG
