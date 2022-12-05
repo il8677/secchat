@@ -167,7 +167,7 @@ static void status(const struct api_msg * msg){
 
 static void formatTime(char* buffer, int size, timestamp_t timestamp){
   struct tm* tm_info;
-  tm_info = localtime(&timestamp); //TODO: somewhere here is a memory leak :)
+  tm_info = localtime(&timestamp);
 
   strftime(buffer, size, "%Y-%m-%d %H:%M:%S", tm_info);
 

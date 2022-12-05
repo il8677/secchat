@@ -228,7 +228,15 @@ function handleLoginAck(msg){
 
         pubkey = msg.cert;
         privkey = removeNullBytes(aesDecrypt(api_username, api_password, msg.privkey));
-        // TODO: Test if matches
+        
+        var testString = "Hello World!";
+        var bytes = rsaEncrypt(pubkey, testString);
+
+        if(rsaDecrypt(privkey, bytes) != testString){ // Cant trust cert, ignore
+            pubkey = 0;
+            privkey = 0;
+            return;
+        }
 
         document.dispatchEvent(e_loggedIn);
     }
