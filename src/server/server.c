@@ -288,7 +288,7 @@ static void register_signals(void) {
 
 static void usage(void) {
   printf("usage:\n");
-  printf("  server port [y/n do webserver]\n");
+  printf("  server port [optional: second argument for web server]\n");
   exit(1);
 }
 
