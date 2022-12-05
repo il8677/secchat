@@ -51,6 +51,7 @@ int send_frame(struct api_state* state, uint8_t* payload, uint64_t length, char 
     return res > 0 ? 0 : -1;
 }
 
+// Calculate websockets magic string
 // I dont know who designed this process, but web sockets requires a transformation of a key to be certain that webscokets are supported
 // Network protocols seem to be real hacked together sometimes...
 char* protwb_processKey(const char *str){
