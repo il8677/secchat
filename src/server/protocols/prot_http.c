@@ -48,6 +48,7 @@ int protht_send(struct worker_state* wstate, struct api_msg* msg){ // HTTP shoul
 int protht_recv(struct worker_state* wstate, struct api_msg* msg){
     #ifdef ROUTE_DEBUG
         www_route_free(routes);
+        routes = NULL;
         protht_init();
     #endif
 
