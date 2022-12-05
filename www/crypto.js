@@ -62,9 +62,9 @@ function verifyTTP(certPEM, cacertPEM){ // TODO: Name verification
 
 function RSAKeyFromCert(certPEM){
     var c = new X509();
-    c.readCertPem(certPEM);
+    c.readCertPEM(certPEM);
 
-    return c.subjectPublicRSA;
+    return c.getPublicKey();
 }
 
 function RSAKeyFromPEM(keyPEM){

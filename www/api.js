@@ -85,11 +85,12 @@ function getPrivMsg(msg, to){
         return getKey(to);
     }
 
+    const signature = sign(privkey, msg);
+
     otherkey = keys.get(to);
 
-    // Length constraints
     msgfrom = rsaEncrypt(pubkey, msg);
-    msgto = rsaEncrypt(privkey, msg);
+    msgto = rsaEncrypt(otherkey, msg);
 
     from = nullpad("", MAX_USER_LEN);
     to = nullpad(to, MAX_USER_LEN);
@@ -100,12 +101,12 @@ function getPrivMsg(msg, to){
         new Uint16Array([0]),
         new Uint16Array([0]),
         new Uint32Array([0]),
-        sign(privkey, msg),
+        new Uint8Array(signature),
         new Uint8Array(timestampSize),
         from,
         to,
-        msgfrom,                      // msg
-        msgto,
+        new Uint8Array(msgfrom),                      // msg
+        new Uint8Array(msgto)
     ]);
 
     return fillBytes(b);
