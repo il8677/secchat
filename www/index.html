@@ -6,16 +6,19 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
         
+        <!-- Supresss "exports undefined" from using npm libs -->
+        <script>
+            var exports = {};
+        </script>
         <!-- Crypto libraries, not my code! -->
         <script src="https://bitwiseshiftleft.github.io/sjcl/sjcl.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sjcl@1.0.8/core/sha1.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sjcl@1.0.8/core/codecBytes.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/index.min.js"></script>
-        <script src="http://www-cs-students.stanford.edu/~tjw/jsbn/jsbn2.js"></script>
-        <script src="http://www-cs-students.stanford.edu/~tjw/jsbn/rsa2.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/jsrsasign@10.6.1/lib/jsrsasign.min.js"></script>
 
         <!-- Now its my code -->
+        <script src="/crypto.js"></script>
         <script src="/api.js"></script>
         <script src="/chat.js"></script>
         <script src="/login.js"></script>

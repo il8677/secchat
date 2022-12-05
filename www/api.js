@@ -1,13 +1,23 @@
 /*
     This is probably terrible javacscript code, and the html is probably also terrible. 
     But the goal is to be secure, and I don't usually program in javacsript so I don't 
-    know best practices outside of general programming best practices
+    know best practices outside of general programming best practices (which I also don't really follow here)
 */
 
 // Globals
 
 // Events that other scripts can use to listen for events
 const e_loggedIn = new Event("loggedIn");
+
+const msgqueue = new Map();
+const keys = new Map();
+
+var cacert = 0; // Note: retrieved from the server, read README -> #Bonus -> ##Notes
+var privkey = 0;
+var pubkey = 0;
+
+var api_password = "";
+var api_username = "";
 
 const msgtype = {
     NONE: 0,
@@ -18,12 +28,15 @@ const msgtype = {
     WHO: 5,
     LOGIN: 6,
     REG: 7,
-    EXIT: 8
+    LOGINACK: 8,
+    EXIT: 9,
+    KEY: 10
 }
 
 const MAX_MSG_LEN = 160;
 const MAX_USER_LEN = 10;
 const HASH_OUT_LEN = 20;
+const MAX_ENCRYPT_LEN = 256;
 
 const SIZEOF_APIMSG = 832;
 
@@ -32,7 +45,7 @@ const timestampSize = 8;
 // Adapted from https://stackoverflow.com/questions/11177153/null-padding-a-string-in-javascript
 // Formats a string to a null terminated length
 function nullpad( str, len ) {
-    if( str.length >= len ) {
+    if( str.length >= len - 1) {
         return str.substring(0, len-1);
     }
 
@@ -41,23 +54,53 @@ function nullpad( str, len ) {
 
 // Fills the rest of the api_msg bytes
 function fillBytes(b){
-    return new Blob([b, SIZEOF_APIMSG-b.size])
+    return new Blob([b, new Uint8Array(SIZEOF_APIMSG-b.size)])
+}
+// ==============================================================================================================================
+// Ugly Functions to format binary that represents api_msg, it was this or to parse JSON in C, so this felt like the lesser evil
+// ==============================================================================================================================
+function getKey(to){
+    const b = new Blob([
+        new Uint32Array([msgtype.KEY]),
+        new Uint32Array([0]),                 // Errcode
+        new Uint16Array([0]),
+        new Uint16Array([0]),
+        new Uint32Array([0]),
+        new String(nullpad("", MAX_ENCRYPT_LEN)), // Padding
+        new Uint8Array(timestampSize), // Padding
+        new String(nullpad("", MAX_USER_LEN)),                      // padding
+        new String(nullpad(to, MAX_USER_LEN))
+    ]);
+
+    return fillBytes(b);
 }
 
-// Functions to format binary that represents api_msg, it was this or to parse JSON in C, so this felt like the lesser evil
 function getPrivMsg(msg, to){
+    if(!keys.has(to)){
+        return getKey(to);
+    }
+
+    otherkey = keys.get(to);
+
     // Length constraints
-    msg = nullpad(msg, MAX_MSG_LEN);
+    msgfrom = rsaEncrypt(pubkey, msg);
+    msgto = rsaEncrypt(privkey, msg);
+
     from = nullpad("", MAX_USER_LEN);
     to = nullpad(to, MAX_USER_LEN);
 
     const b = new Blob([
         new Uint32Array([msgtype.PRIV_MSG]),         // Type
         new Uint32Array([0]),                 // Errcode
+        new Uint16Array([0]),
+        new Uint16Array([0]),
+        new Uint32Array([0]),
+        sign(privkey, msg),
         new Uint8Array(timestampSize),
-        new String(msg),                      // msg
-        new String(from),
-        new String(to)
+        from,
+        to,
+        msgfrom,                      // msg
+        msgto,
     ]);
 
     return fillBytes(b);
@@ -69,6 +112,10 @@ function getPubMsg(msg){
     const b = new Blob([
         new Uint32Array([msgtype.PUB_MSG]),         // Type
         new Uint32Array([0]),                 // Errcode
+        new Uint16Array([0]),
+        new Uint16Array([0]),
+        new Uint32Array([0]),
+        sign(privkey, msg),
         new Uint8Array(timestampSize),
         new String(msg)                      // msg
     ]);
@@ -90,6 +137,9 @@ function getLogin(username, password){
     const b = new Blob([
         new Uint32Array([msgtype.LOGIN]),
         new Uint32Array([0]),
+        new Uint16Array([0]),
+        new Uint16Array([0]),
+        new Uint32Array([0]),
         new String(username),
         new Uint8Array(password)
     ]);
@@ -104,6 +154,9 @@ function getReg(username, password){
 
     const b = new Blob([
         new Uint32Array([msgtype.REG]),
+        new Uint32Array([0]),
+        new Uint16Array([0]),
+        new Uint16Array([0]),
         new Uint32Array([0]),
         new String(username),
         new Uint8Array(password)
@@ -139,7 +192,7 @@ function showMessage(msg, outid){
         outElement.className = "alert alert-danger";
         outElement.innerHTML = errcodeToString(msg.errcode);
 
-        if(msg.errcode == 8){
+        if(msg.errcode == -8){
             document.dispatchEvent(e_loggedIn);
         }
 
@@ -148,16 +201,39 @@ function showMessage(msg, outid){
     else if(msg.type == msgtype.STATUS){
         outElement.className = "alert alert-info";
         outElement.innerHTML = msg.status;
-
-        // Ugly, but it will be fixed later when the method of login comfirmation changes
-        if(msg.status == "authentication succeeded"){
-            document.dispatchEvent(e_loggedIn);
-        }
-
         return true;
     }
 
     return false;
+}
+
+function handleIncomingKey(msg){
+    if(msg.type == msgtype.KEY){
+        if(!verifyTTP(msg.cert, cacert)) return;
+        if(msg.key == undefined) return;
+
+        keys.set(msg.who, msg.key);
+    }
+}
+
+function handleLoginAck(msg){
+    if(msg.type == msgtype.LOGINACK){
+        if(pubkey != 0 || privkey != 0) return;
+
+        pubkey = msg.cert;
+        privkey = aesDecrypt(api_username, api_password, msg.privkey);
+        // TODO: Test if matches
+
+        document.dispatchEvent(e_loggedIn);
+    }
+}
+
+function handleMsg(msg){
+    if(msg.type == msgtype.PUB_MSG || msg.type == msgtype.PRIV_MSG){
+        if(msg.cert != undefined){
+            keys.set(msg.from, msg.cert);
+        }
+    }
 }
 
 // Taken from https://stackoverflow.com/questions/847185/convert-a-unix-timestamp-to-time-in-javascript
@@ -195,5 +271,10 @@ function createWebsocket(){
 window.addEventListener("load", () => {
     // bad global variable! But I'm not sure how it should be properly done
     document.commSocket = createWebsocket();
-    document.addEventListener("recievedMessage", (event) => {showMessage(event.detail, "statusbox");}); // Add listener to show status messages / errors
+    document.addEventListener("recievedMessage", (event) => {
+        showMessage(event.detail, "statusbox");
+        handleIncomingKey(event.detail);
+        handleLoginAck(event.detail);
+        handleMsg(event.detail);
+    }); // Add listener to show status messages / errors
 });

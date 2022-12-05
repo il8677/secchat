@@ -5,7 +5,9 @@ function submitForm(event){
     const password = form.elements["password"].value;
     const type = form.submitted;
     const msg = type == "register" ? getReg(username, password) : getLogin(username, password);
-
+    
+    api_username = username; // Set api username
+    api_password = password; // Set api password
     sendData(msg);
 }
 

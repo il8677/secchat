@@ -23,8 +23,8 @@ int send_header(struct api_state* state, uint64_t length, char opcode){
     if(length <= 125) len1 = length;
     else if (length <= UINT32_MAX) {
         len1 = 126;
-        *(uint32_t*)(header+2) = htonl((uint32_t)length);
-        headerLen += 4;
+        *(uint16_t*)(header+2) = htons((uint16_t)length);
+        headerLen += 2;
     }
     else {
         len1 = 127;
@@ -34,6 +34,11 @@ int send_header(struct api_state* state, uint64_t length, char opcode){
 
     header[1] = len1;
     
+    printf("Writing header len %d\n", headerLen);
+    for(int i = 0; i < headerLen; i++){
+        printf("%x ", header[i]);
+    }
+    printf("\n");
     return ssl_block_write(state->ssl, state->fd, header, headerLen);
 }
 
@@ -71,6 +76,7 @@ char* protwb_processKey(const char *str){
 int wb_api_to_json_send(struct api_state* state, struct api_msg* msg){
     char* json = api_msg_to_json(msg);
     int res = send_frame(state, (unsigned char*)json, strlen(json), 0x1);
+    printf("Sent len %ld json %s\n", strlen(json), json);
     free(json);
 
     return res == 0;
@@ -86,6 +92,7 @@ int protwb_notify(struct worker_state* state){
 }
 
 int protwb_send(struct worker_state* state, struct api_msg* msg){
+    API_PRINT_MSG("[websockets] Sending", (*msg));
     return wb_api_to_json_send(&state->api, msg);
 }
 
@@ -99,8 +106,9 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
 
     len = ssl_block_read(state->ssl, state->fd, buf, sizeof(buf)-1); // Always leave null byte
 
-    if(len <= 0) return -1;
-
+    if(len <= 0) {
+        return -1;
+    }
     // Get header values
     uint8_t fin = buf[0] >> 7;
     uint8_t opcode = buf[0] & 0x0f;

@@ -17,7 +17,6 @@ void crypto_hash(const char* data, uint32_t len, unsigned char* output){
     SHA1_Final(output, &ctx);
 }
 
-
 // WE DID NOT WRITE THIS CODE!!
 // This was literally just needed for the websockets, so we took it from this site
 // https://doctrina.org/Base64-With-OpenSSL-C-API.html
@@ -35,6 +34,11 @@ int Base64Encode(const unsigned char* buffer, size_t length, char** b64text) { /
 	BIO_get_mem_ptr(bio, &bufferPtr);
 	BIO_set_close(bio, BIO_NOCLOSE);
 	BIO_free_all(bio);
+    
+    printf("B64 output inlen %ld outlen %ld data: %.*s\n", length, (*bufferPtr).length + 1, (int)(*bufferPtr).length + 1, (*bufferPtr).data);
+    // Add null terminator (kinda inefficient, but only used for web)
+    BUF_MEM_grow(bufferPtr, (*bufferPtr).length + 1);
+    (*bufferPtr).data[(*bufferPtr).length] = '\0'; 
 
 	*b64text=(*bufferPtr).data;
 
@@ -57,9 +61,11 @@ int read_file(const char* path, char** out){
 }
 
 static uint8_t* makeBuffer(const char* str, size_t len){
+    uint8_t minlength = len > strlen(str) ? strlen(str) : len;
+
     uint8_t* buf = malloc(len);
     memset(buf, 0, len);
-    memcpy(buf, str, strlen(str));
+    memcpy(buf, str, minlength);
 
     return buf;
 }

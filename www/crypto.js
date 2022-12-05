@@ -30,10 +30,10 @@ function bytesToHex(bytes) {
 
 
 // Returns bytes of signature
-function sign(privkey, msg){
+function sign(privkeyPEM, msg){
     var sig = new JKUR.crypto.Signature({"alg": "SHA1withRSA"});
 
-    sig.init(privkey);
+    sig.init(privkeyPEM);
     
     sig.updateString(msg);
 
@@ -65,4 +65,35 @@ function verifyTTP(certPEM, cacertPEM){
     sig.init(cacertPem);
     sig.updateHex(hexCert);
     return sig.verify(certSig);
+}
+
+function RSAKeyFromCert(certPEM){
+    var c = new X509();
+    c.readCertPem(certPEM);
+
+    return c.subjectPublicRSA;
+}
+
+function RSAKeyFromPEM(keyPEM){
+    return KJUR.RSAKey.readPrivateKeyFromPEMString(keyPEM);
+}
+
+// Encrypts message, returns bytes
+function rsaEncrypt(keyCertPEM, msg){
+    return hexToBytes(KJUR.crypto.Cipher.encrypt(msg, RSAKeyFromCert(keyCertPEM), "RSAOAEP"));
+}
+
+function rsaDecrypt(privkeyPEM, msgBytes){
+    return KJUR.crypto.Cipher.decrypt(bytesToHex(msgBytes), RSAKeyFromPEM(keyPEM), "RSAOAEP");
+}
+
+function aesDecrypt(iv, password, encText){
+    password = nullpad(password, 16);
+    iv = nullpad(iv, 16);
+
+    // Make iv and password correct length
+    const decrypted = CryptoJS.AES.decrypt({ciphertext: CryptoJS.enc.Base64.parse(encText), salt:""}, 
+        CryptoJS.enc.Utf8.parse(password), {iv: CryptoJS.enc.Utf8.parse(iv)});
+
+    return decrypted.toString(CryptoJS.enc.Utf8);
 }

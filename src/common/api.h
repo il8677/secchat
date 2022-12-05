@@ -48,16 +48,16 @@ struct api_msg {
 
   uint32_t errcode;
 
-  // The following are information about extra data that should be transmitted.
+  // The following is information about extra data that should be transmitted.
   // These weren't implemented as static fields since the length is indeterminate
   // and it's pretty wasteful to have ~3KB of overhead when you don't always need it
-  // So these "trailers" are sent/recieved after the api_msg is sent/recieved.
+  // So these "trailers" are sent/recieved after the api_msg is sent/recieved if the length is defined.
 
   // Length of attached data (if any)
   uint16_t encPrivKeyLen;
   uint16_t certLen;
 
-
+  uint32_t padding; // Enforce structure packing
   union {
     struct {
       char statusmsg[MAX_MSG_LEN];

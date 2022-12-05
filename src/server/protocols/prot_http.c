@@ -32,6 +32,7 @@ void protht_init(){
         www_route_initadd(routes, "/chat.js", "www/chat.js");
         www_route_initadd(routes, "/style.css", "www/style.css");
         www_route_initadd(routes, "/api.js", "www/api.js");
+        www_route_initadd(routes, "/crypto.js", "www/crypto.js");
     }
 }
 

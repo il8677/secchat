@@ -40,7 +40,7 @@ char* api_msg_to_json(struct api_msg* msg){
 
     if (msg->encPrivKeyLen){
         // B64 encode
-        Base64Encode((unsigned char*)msg->encPrivKey, msg->encPrivKeyLen, (char**)&priv);
+        Base64Encode((unsigned char*)msg->encPrivKey, msg->encPrivKeyLen, &priv);
     }
 
     // json overhead space + additional data
@@ -96,21 +96,21 @@ char* api_msg_to_json(struct api_msg* msg){
         case WHO:
             allocatedSize += sizeof(msg->who);
             json = malloc(allocatedSize);
-            jsonLoc += sprintf(json, "{\"type\": %d, \"who\": \"%s\"}", msg->type, msg->who.users);
+            jsonLoc += sprintf(json, "{\"type\": %d, \"who\": \"%s\"", msg->type, msg->who.users);
             break;
 
         case LOGINACK:
             json = malloc(allocatedSize);
-            jsonLoc += sprintf(json, "{\"type\": %d}", msg->type);
+            jsonLoc += sprintf(json, "{\"type\": %d", msg->type);
             break;
         case KEY:
             json = malloc(allocatedSize);
-            jsonLoc += sprintf(json, "{\"type\": %d}", msg->type);
+            jsonLoc += sprintf(json, "{\"type\": %d", msg->type);
             break;
 
         default:
             json = malloc(allocatedSize);
-            sprintf(json, "{\"type\": %d}", NONE);
+            sprintf(json, "{\"type\": %d", NONE);
             goto cleanup;
     }
 
