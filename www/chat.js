@@ -6,13 +6,13 @@ function addMessage(msg){
 
     if(msg.type == msgtype.PRIV_MSG){
         msg.msg = rsaDecrypt(privkey, msg.msg);
-        msg.msg = removeNullBytes(msg.msg); // We need to remove null byte since its part of the encrypted string
+        msg.msg = removeNullBytes(msg.msg); // We need to remove null byte since its part of the encrypted string and not needed in js
+    }else{
+        msg.msg = atob(msg.msg); // B64 decode it
     }
 
     // Verification
     try{
-        console.log(msg.from);
-        console.log(keys.get(msg.from));
         verified = verify(msg.signature, msg.msg, keys.get(msg.from));
     }finally{
     }

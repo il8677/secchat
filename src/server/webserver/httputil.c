@@ -44,7 +44,7 @@ char* api_msg_to_json(struct api_msg* msg){
     }
 
     // json overhead space + additional data
-    int allocatedSize = 50 + (msg->encPrivKeyLen? strlen(priv) : 0) + msg->certLen;
+    int allocatedSize = 75 + (msg->encPrivKeyLen? strlen(priv) : 0) + msg->certLen;
 
     char* json;
     
@@ -83,15 +83,19 @@ char* api_msg_to_json(struct api_msg* msg){
             break;}
         case PUB_MSG:{
             char* signature;
-            Base64Encode((unsigned char*)msg->priv_msg.signature, MAX_ENCRYPT_LEN, &signature);
+            char* msgb64; // We need to base64 encode the message since it might contain special characters that escape JSON
+
+            Base64Encode((unsigned char*)msg->pub_msg.signature, MAX_ENCRYPT_LEN, &signature);
+            Base64Encode((unsigned char*)msg->pub_msg.msg, strnlen(msg->pub_msg.msg, MAX_MSG_LEN_M1), &msgb64);
 
             // Subtrack from the size needed since we have the b64 string instead of the signature
-            allocatedSize += strlen(signature) + sizeof(msg->pub_msg) - MAX_ENCRYPT_LEN;
+            allocatedSize += strlen(signature) + strlen(msgb64) + sizeof(msg->pub_msg) - MAX_ENCRYPT_LEN - MAX_MSG_LEN;
             json = malloc(allocatedSize);
             jsonLoc += sprintf(json, "{\"type\": %d, \"signature\": \"%s\", \"timestamp\": %ld, \"msg\":\"%s\", \"from\":\"%s\"", 
-            msg->type, signature, msg->pub_msg.timestamp, msg->pub_msg.msg, msg->pub_msg.from);
+            msg->type, signature, msg->pub_msg.timestamp, msgb64, msg->pub_msg.from);
 
             free(signature);
+            free(msgb64);
             break;}
         case WHO:
             allocatedSize += sizeof(msg->who);
