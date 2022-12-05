@@ -132,4 +132,6 @@ int api_send(struct api_state* state, struct api_msg* msg);
 void api_state_free(struct api_state* state);
 void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method);
 
+void api_null_terminate(struct api_msg* msg);
+
 #endif /* defined(_API_H_) */

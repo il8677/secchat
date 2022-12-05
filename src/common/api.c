@@ -122,3 +122,32 @@ void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method) {
 
   SSL_set_fd(state->ssl,  fd);
 }
+
+void api_null_terminate(struct api_msg* msg){
+  switch (msg->type)
+  {
+  case STATUS:
+    msg->status.statusmsg[MAX_MSG_LEN-1] = '\0';
+  break;
+  case PRIV_MSG:
+    msg->priv_msg.from[MAX_USER_LEN-1] = '\0';
+    msg->priv_msg.to[MAX_USER_LEN-1] = '\0';
+  break;
+  case PUB_MSG:
+    msg->pub_msg.from[MAX_USER_LEN-1] = '\0';
+    msg->pub_msg.msg[MAX_MSG_LEN-1] = '\0';
+  break;
+  case WHO:
+    msg->who.users[MAX_MSG_LEN-1] = '\0';
+  break;
+  case KEY:
+    msg->key.who[MAX_USER_LEN-1] = '\0';
+  break;
+  case REG:
+  case LOGIN:
+    msg->reg.username[MAX_USER_LEN-1] = '\0';
+  break;
+  default:
+    break;
+  }
+}

@@ -361,6 +361,8 @@ static int handle_server_request(struct client_state* state) {
     return 0;
   }
 
+  api_null_terminate(&msg);
+
   //printf("[handle_server_request] incoming packet %d\n", msg.type);
 
   /* execute request */

@@ -22,6 +22,7 @@ static int is_logged_in(struct worker_state* state) { return state->uid != -1; }
 /// @return 1 if OK, <0 if error
 static int authenticate_request(struct worker_state* state,
                                 struct api_msg* msg) {
+  // Not used, keep for future use
   if (0) return ERR_AUTHENTICATION;
 
   return 1;
@@ -148,6 +149,7 @@ int handle_client_request(struct worker_state* state) {
     api_msg_free(&msg);
     return 0;
   }
+  api_null_terminate(&msg);
 
   API_PRINT_MSG("recv", msg);
 

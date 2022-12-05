@@ -158,6 +158,10 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
             return -1;
         }
         memcpy(msg, data, sizeof(struct api_msg));
+
+        msg->encPrivKey = NULL;
+        msg->cert = NULL;
+
         data += sizeof(struct api_msg);
 
         // Check if remaining data is of correct size
