@@ -112,7 +112,7 @@ struct api_msg {
   
   // Pointers to attached authentication info
   // Only should be used locally since pointers are meaningless over the wire
-  // Should be sent explicitly so the other side can recieve and set these fields
+  // Should be sent explicitly so the other side can recieve and set these fields on their end
   char* encPrivKey;
   char* cert;
 };

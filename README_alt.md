@@ -35,31 +35,35 @@ The following list shows all the different api_msg types, and the information th
 Never actually sent, just a standin for no message
 
 #### status
-The message conveys some informational message, stores that message.
+The message conveys some informational message, stores that message. (server->client)
 
 #### error
-The message has an errcode field containing an errorcode sent by the server. Error codes are defined in errcodes.h 
+The message has an errcode field containing an errorcode sent by the server. Error codes are defined in errcodes.h  (server->client)
 
 #### priv_msg
-The message represents a private message between two users. It contains a unix timestamp, two RSA public key encrypted messages (one for sender, one for recipient), and two unencrypted fields with the usernames of the sender and the recipient. RSA signed by sender
+The message represents a private message between two users. It contains a unix timestamp, two RSA public key encrypted messages (one for sender, one for recipient), and two unencrypted fields with the usernames of the sender and the recipient. RSA signed by sender. 
+
+The "from" field is filled out by the server, not the client. When the server sends the apimessage, only the "frommsg" field is populated, since the client only needs one of the messages (the other is unreadable anyway).
 
 #### pub_msg
 The message represents a public message to everyone. It contains a unix timestamp, the (unencrypted) message, a field with the senders username, and is RSA signed by the sender.
 
+The "from" field is filled out by the server, not the client.
+
 #### who
-The message contains a string with a list of all users. 
+The message contains a string with a list of all users. The string is only populated when sending server->client, since the other direction is a request.
 
 #### login / register
-The message contains a username and hashed password.
+The message contains a username and hashed password. The registration additionally contains the certificate and private key (see: additional data)
 
 #### login acknowledgement
-The message acknowledges a successful login from the server.
+The message acknowledges a successful login from the server. Contains certificate and private key (see: additional data)
 
 #### exit
 No fields
 
 #### Key
-A request for another users public key, or a response of the public key.
+A request for another users public key, or a response of the public key. Contains certificate if it's a response (see: additional data)
 
 ### Additional Data
 The fields for each message type is stored in a union, so an entire api_msg is the size of the maximum possible message type. In addition to this, api_msgs contain lengths for an optional key or certificate that is attached to the message. This data is usually thousands of bytes long, so it would be inefficient to transmit it as part of the main message, so the server / client only reads the extra data if the recieved message has the lengths set.
@@ -165,3 +169,6 @@ The web interface itself is a bit janky, since CSS is not fun, but it is functio
 ## PLEASE NOTE
 1. The web client gets the TTP certificate from the server via HTTP request, this is obviously unsafe, and could be forged by the server. In a real situation the CA would be a real one that systems have access to anyway. This only affects verifying the certificates other users (which does have implications for the other security measures), but I could not think of a proper way to distribute this certificate to the webclient, but since the native client is assumed to have safe access to it, I assumed that serving it from the server would also be an OK shortcut, and it could be assumed that the server is unable to forge the CA for whatever reason.
 2. Registration is not possible using the web interface, one must log in with a user created from the CLI. This is because registration requires the generation of an RSA key pair and the signing from the TTP, and from a web interface there is no simple way to access the ttp script.
+
+## Implementation
+The websockets API encodes outgoing messages in JSON, sending it to the web client. The web client sends direct bytes, which are read into an api_msg. The difference in the ways messages are conveyed is because formatting json is much easier than parsing it.
