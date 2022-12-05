@@ -148,7 +148,7 @@ int input_handle_login(struct api_msg* apimsg, char* p, char** passwordout, char
 
   apimsg->type = LOGIN;
   strncpy(apimsg->login.username, username, MAX_USER_LEN);
-  crypto_hash(password, strlen(password), (unsigned char*)apimsg->login.password);
+  crypto_sha2_hash(password, strlen(password), username, (unsigned char*)apimsg->login.password);
 
   return 0;
 }
@@ -173,7 +173,7 @@ int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout, c
 
   apimsg->type = REG;
   strncpy(apimsg->reg.username, username, MAX_USER_LEN);
-  crypto_hash(password, strlen(password), (unsigned char*)apimsg->login.password);
+  crypto_sha2_hash(password, strlen(password), username, (unsigned char*)apimsg->login.password);
 
   crypto_get_user_auth(username, &apimsg->encPrivKey, &apimsg->cert);
   char* enc = crypto_aes_encrypt(apimsg->encPrivKey, strlen(apimsg->encPrivKey)+1, password, username, 1, &apimsg->encPrivKeyLen);

@@ -11,6 +11,8 @@ int Base64Encode(const unsigned char* buffer, size_t length, char** b64text);
 
 void crypto_hash(const char* data, uint32_t len, unsigned char* output);
 
+void crypto_sha2_hash(const char* data, uint32_t len, const char* salt, unsigned char* output);
+
 char* crypto_aes_encrypt(char* bytes, uint16_t bytesLen, const char* password, const char* iv, char encrypt, uint16_t* outLen);
 
 /// @brief Asks the TTP to generate a certificate and private key for user

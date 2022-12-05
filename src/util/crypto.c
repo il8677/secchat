@@ -8,13 +8,20 @@
 #include <string.h>
 #include <openssl/rsa.h>
 
-// https://www.openssl.org/docs/man1.1.1/man3/SHA512_Init.html
 void crypto_hash(const char* data, uint32_t len, unsigned char* output){
     SHA_CTX ctx;
 
     SHA1_Init(&ctx);
     SHA1_Update(&ctx, data, len);
     SHA1_Final(output, &ctx);
+}
+
+void crypto_sha2_hash(const char* data, uint32_t len, const char* salt, unsigned char* output){
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, data, len);
+    SHA256_Update(&ctx, salt, strlen(salt));
+    SHA256_Final(output, &ctx);
 }
 
 // WE DID NOT WRITE THIS CODE!!

@@ -98,12 +98,12 @@ struct api_msg {
 
     struct {
       char username[MAX_USER_LEN];
-      char password[SHA_DIGEST_LENGTH];
+      char password[SHA256_DIGEST_LENGTH];
     } login;
 
     struct {
       char username[MAX_USER_LEN];
-      char password[SHA_DIGEST_LENGTH];
+      char password[SHA256_DIGEST_LENGTH];
     } reg;
 
     struct {

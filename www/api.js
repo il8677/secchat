@@ -138,9 +138,8 @@ function getWho(){
 }
 
 function getLogin(username, password){
+    password = sha256(password, username);
     username = nullpad(username, MAX_USER_LEN);
-    password = sjcl.hash.sha1.hash(password)
-    password = sjcl.codec.bytes.fromBits(password);
 
     const b = new Blob([
         new Uint32Array([msgtype.LOGIN]),
@@ -156,9 +155,8 @@ function getLogin(username, password){
 }
 
 function getReg(username, password){
+    password = sha256(password, username);
     username = nullpad(username, MAX_USER_LEN);
-    password = sjcl.hash.sha1.hash(password)
-    password = sjcl.codec.bytes.fromBits(password);
 
     const b = new Blob([
         new Uint32Array([msgtype.REG]),

@@ -92,3 +92,12 @@ function aesDecrypt(iv, password, encText){
 
     return decrypted.toString(CryptoJS.enc.Utf8);
 }
+
+function sha256(data, salt){
+    var hash = new sjcl.hash.sha256();
+
+    hash.update(data);
+    hash.update(salt);
+
+    return sjcl.codec.bytes.fromBits(hash.finalize());
+}

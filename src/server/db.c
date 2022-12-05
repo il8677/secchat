@@ -55,7 +55,7 @@ void db_create(struct db_state* state){
     "CREATE TABLE IF NOT EXISTS users ( \
         id INTEGER PRIMARY KEY AUTOINCREMENT, \
         username VARCHAR(" STR(MAX_USER_LEN_M1) ") NOT NULL UNIQUE, \
-        password BLOB(" STR(SHA_DIGEST_LENGTH) ") NOT NULL,\
+        password BLOB(" STR(SHA256_DIGEST_LENGTH) ") NOT NULL,\
         privkey BLOB("STR(MAX_PRIVKEY)") NOT NULL, \
         cert VARCHAR("STR(MAX_CERT)") NOT NULL);", 
     NULL, NULL);
