@@ -191,8 +191,10 @@ static int handle_attached_key(struct client_state* state, const struct api_msg*
   if(!msg->certLen) return ERR_INVALID_API_MSG;
 
   X509* recievedCert = crypto_parse_x509_string(msg->cert);
-  if(!crypto_verify_x509(recievedCert, name)) return ERR_CERT_AUTHENTICITY;
-
+  if(!crypto_verify_x509(recievedCert, name)) {
+    printf("Recieved inauthentic cert for %s\n", name);
+    return ERR_CERT_AUTHENTICITY;
+  }
   // Add pointer to cert to the list
   list_add(state->head_certs, name, &recievedCert, sizeof(recievedCert), 1); 
 
