@@ -237,6 +237,7 @@ function handleLoginAck(msg){
 function handleMsg(msg){
     if(msg.type == msgtype.PUB_MSG || msg.type == msgtype.PRIV_MSG){
         if(msg.cert != undefined){
+            if(!verifyTTP(msg.cert, cacert)) return;
             keys.set(msg.from, msg.cert);
         }
     }

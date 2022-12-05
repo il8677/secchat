@@ -30,6 +30,7 @@ function sign(privkeyPEM, msg){
 }
 
 function verify(signatureB64, msg, certPEM){
+    if(certPEM == undefined) return false;
     console.log("Verifying " + msg);
     var sig = new KJUR.crypto.Signature({"alg": "SHA1withRSA"});
 
@@ -44,6 +45,8 @@ function verify(signatureB64, msg, certPEM){
 // A lot of these functions in C I refered to the SSL examples, since these libs are quite complicated
 // With javascript I looked online a lot for examples
 function verifyTTP(certPEM, cacertPEM){
+    if(cacertPEM == 0) return false;
+
     var c = new X509();
     c.readCertPem(certPEM);
 
