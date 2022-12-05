@@ -182,11 +182,12 @@ static void list_msg_send_callback(Node* n, void* usr){
   struct api_msg* msg = (struct api_msg*)n->contents;
   struct callback_data_in* data = usr;
 
-  handle_privmsg_send(data->state->privkey, data->state->cert, data->other, msg);
+  privmsg_encrypt(data->state->privkey, data->state->cert, data->other, msg);
 
   api_send(&data->state->api, msg);
 }
 
+// Adds recieved key to cache, sending queued messages
 static int handle_attached_key(struct client_state* state, const struct api_msg* msg, const char* name){
   if(!msg->certLen) return ERR_INVALID_API_MSG;
 
@@ -217,6 +218,7 @@ static void cacheAttatchedCert(struct client_state* state, const struct api_msg*
 static char verifyMessage(struct client_state* state, const struct api_msg* msg, const char* msgtext){
   Node* n = list_find(state->head_certs, msg->priv_msg.from);
 
+  // We dont have the key, so we can't verify
   if(n == NULL) return 0;
 
   X509* cert = ((X509**)n->contents)[0];
@@ -225,51 +227,54 @@ static char verifyMessage(struct client_state* state, const struct api_msg* msg,
 }
 
 static void privMsg(struct client_state* state, const struct api_msg * msg){
-  char buffer[26];
-  formatTime(buffer, 26, msg->priv_msg.timestamp);
+  char timeBuffer[26];
+  formatTime(timeBuffer, 26, msg->priv_msg.timestamp);
 
   cacheAttatchedCert(state, msg);
 
   char* unencrpyted = crypto_RSA_privkey_decrypt(state->privkey, msg->priv_msg.frommsg);
 
-  if(!verifyMessage(state, msg, unencrpyted)) printf("Unsigned! ");
+  // This means the message is unsigned or the signature is wrong, we want to still show the message, just tell the user its inauthentic
+  if(!verifyMessage(state, msg, unencrpyted)) 
+    printf("Unsigned! ");
 
   //never print more than the respective maximum lengths.
-  printf("%s %.*s: @%.*s %.*s\n", buffer, MAX_USER_LEN, 
+  printf("%s %.*s: @%.*s %.*s\n", timeBuffer, MAX_USER_LEN, 
     msg->priv_msg.from, MAX_USER_LEN, msg->priv_msg.to, MAX_MSG_LEN, unencrpyted);
   
   free(unencrpyted);
 }
 
 static void pubMsg(struct client_state* state, const struct api_msg * msg){
-  char buffer[26];
+  char timeBuffer[26];
+  formatTime(timeBuffer, 26, msg->priv_msg.timestamp);
 
   cacheAttatchedCert(state, msg);
 
-  formatTime(buffer, 26, msg->priv_msg.timestamp);
-
-  if(!verifyMessage(state, msg, msg->pub_msg.msg)) printf("Unsigned! ");
+  // This means the message is unsigned or the signature is wrong, we want to still show the message, just tell the user its inauthentic
+  if(!verifyMessage(state, msg, msg->pub_msg.msg)) 
+    printf("Unsigned! ");
 
   //never print more than the respective maximum lengths.
-  printf("%s %s: %s\n", buffer,
-  msg->pub_msg.from, msg->pub_msg.msg);
+  printf("%s %.*s: %.*s\n", timeBuffer,
+    MAX_USER_LEN, msg->pub_msg.from, MAX_MSG_LEN, msg->pub_msg.msg);
   
 }
 static void who(const struct api_msg * msg){
-  printf("users:\n%s\n", msg->who.users);
+  printf("users:\n%.*s\n", MAX_MSG_LEN, msg->who.users);
 }
 
 static void loginAck(const struct api_msg* msg, struct client_state* state){
   // If we already have a key, something has gone wrong
   if(state->cert != NULL || state->privkey != NULL) return;
-  // If the message doesn't have a key-pair, something has gone wring
+  // If the message doesn't have a key-pair, something has gone wrong
   if(msg->certLen == 0 || msg->encPrivKeyLen == 0) return;
-
-  if(state->password == NULL) return;
-  if(state->username == NULL) return;
+  // If the username or pass was not set, something has gone wrong
+  if(state->password == NULL, state->username == NULL) return;
 
   state->cert = crypto_parse_x509_string(msg->cert);
 
+  // Unencypt and store privkey
   uint16_t outlen;
   char* unencrpyted = crypto_aes_encrypt(msg->encPrivKey, msg->encPrivKeyLen, state->password, state->username, 0, &outlen);
   
@@ -288,7 +293,7 @@ static void loginAck(const struct api_msg* msg, struct client_state* state){
   crypto_RSA_pubkey_encrypt(encrypted, state->cert, testString, strlen(testString)+1);
   char* out = crypto_RSA_privkey_decrypt(state->privkey, encrypted);
 
-  // Bad cert!
+  // Bad cert! Leave because we shouldn't trust the server now
   if(strcmp(testString, out) != 0){
     printf("Error: Recieved invalid certificate from server!\n");
     state->eof = 1;

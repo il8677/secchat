@@ -62,7 +62,7 @@ int message_too_long(char* msg) {
   return strlen(msg)+1 > MAX_MSG_LEN;  
 }
 
-void handle_privmsg_send(RSA* key, X509* selfcert, X509* other, struct api_msg* msg){
+void privmsg_encrypt(RSA* key, X509* selfcert, X509* other, struct api_msg* msg){
   msg->type = PRIV_MSG;
 
   // The message is stored in frommsg, sign, encrypt and store. The recipient is already set
@@ -103,7 +103,7 @@ int input_handle_privmsg(Node* certList, Node* msgQueue, RSA* key, X509* selfcer
     // Wipe msg so it isn't leaked to server
     memset(apimsg->priv_msg.frommsg, 0, MAX_MSG_LEN);
   }else{
-    handle_privmsg_send(key, selfcert, *(X509**)cert->contents, apimsg);
+    privmsg_encrypt(key, selfcert, *(X509**)cert->contents, apimsg);
   }
 
   return 0;

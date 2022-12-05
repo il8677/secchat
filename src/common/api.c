@@ -126,6 +126,7 @@ void api_state_init(struct api_state* state, int fd, const SSL_METHOD* method) {
 void api_null_terminate(struct api_msg* msg){
   switch (msg->type)
   {
+  case LOGINACK: // Login acks are also treated as status
   case STATUS:
     msg->status.statusmsg[MAX_MSG_LEN-1] = '\0';
   break;
