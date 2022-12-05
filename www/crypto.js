@@ -26,7 +26,7 @@ function sign(privkeyPEM, msg){
     
     sig.updateString(msg);
 
-    return hexToBytes(sig.sign);
+    return hexToBytes(sig.sign());
 }
 
 function verify(signatureB64, msg, certPEM){
