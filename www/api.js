@@ -277,6 +277,16 @@ function createWebsocket(){
 window.addEventListener("load", () => {
     // bad global variable! But I'm not sure how it should be properly done
     document.commSocket = createWebsocket();
+
+    // Syncronously get (This is slow, but in a real app the ttp cert should already be installed, see README)
+    const request = new XMLHttpRequest();
+    request.open('GET', '/ca.cert', false);  // `false` makes the request synchronous
+    request.send(null);
+
+    if (request.status === 200) {
+        cacert = request.responseText;
+    }
+
     document.addEventListener("recievedMessage", (event) => {
         showMessage(event.detail, "statusbox");
         handleIncomingKey(event.detail);

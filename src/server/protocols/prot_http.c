@@ -33,6 +33,9 @@ void protht_init(){
         www_route_initadd(routes, "/style.css", "www/style.css");
         www_route_initadd(routes, "/api.js", "www/api.js");
         www_route_initadd(routes, "/crypto.js", "www/crypto.js");
+
+        // This is unsafe, but it should be OK? See: Readme -> #bonus -> ##Please note
+        www_route_initadd(routes, "/ca.cert", "www/ca-cert.pem");
     }
 }
 

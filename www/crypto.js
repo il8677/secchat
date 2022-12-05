@@ -44,18 +44,18 @@ function verify(signatureB64, msg, certPEM){
 // Used for reference: https://github.com/kjur/jsrsasign/issues/176
 // A lot of these functions in C I refered to the SSL examples, since these libs are quite complicated
 // With javascript I looked online a lot for examples
-function verifyTTP(certPEM, cacertPEM){
+function verifyTTP(certPEM, cacertPEM){ // TODO: Name verification
     if(cacertPEM == 0) return false;
 
     var c = new X509();
-    c.readCertPem(certPEM);
+    c.readCertPEM(certPEM);
 
-    var hexCert = KJUR.ASN1HEX.getDecendantHexTLVByNthList(c.hex, 0, [0]);
+    var hexCert = ASN1HEX.getTLVbyList(c.hex, 0, [0]);
     var alg = c.getSignatureAlgorithmField();
-    var certSig = KJUR.X509.getSignatureValueHex(certificate.hex);
+    var certSig = c.getSignatureValueHex();
 
     var sig = new KJUR.crypto.Signature({"alg": alg});
-    sig.init(cacertPem);
+    sig.init(cacertPEM);
     sig.updateHex(hexCert);
     return sig.verify(certSig);
 }

@@ -20,3 +20,4 @@ __pycache__
 serverkeys
 clientkeys
 ttpkeys
+www/*.pem

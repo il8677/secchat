@@ -51,6 +51,7 @@ if __name__ == "__main__":
             generateCA()
 
             shutil.copyfile(f"{ttpdir}/ca-cert.pem", f"{clientdir}/ca.cert")
+            shutil.copyfile(f"{ttpdir}/ca-cert.pem", f"www/ca-cert.pem")
     elif args.c:
         generateKeyPair(clientdir)
         generateCert(clientdir, args.c)
