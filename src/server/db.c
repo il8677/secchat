@@ -101,7 +101,7 @@ int db_get_messages(struct db_state* state, struct worker_state* astate, int uid
         SELECT messages.id, messages.signature, timestamp, sender, recipient, recipientmsg FROM priv_messages LEFT JOIN messages ON messages.id == priv_messages.id WHERE recipient == %d) AS q1 \
         LEFT JOIN users AS su ON su.id == q1.sender \
         LEFT JOIN users AS ru ON ru.id == q1.recipient \
-        WHERE q1.id > %i;", 
+        WHERE q1.id > %i ORDER BY q1.id ASC;", 
         uid, uid, *lastviewed); // TODO: Sort this
 
 
