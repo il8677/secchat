@@ -7,6 +7,12 @@ ttpdir = "ttpkeys"
 serverdir = "serverkeys"
 clientdir = "clientkeys"
 
+def createDir(dir):
+    if not os.path.isdir(dir):
+        os.mkdir(dir)
+        return True
+    return False
+
 def generateKeyPair(dir):
     # Generate priv key
     os.system(f"openssl genrsa -out {dir}/priv.pem 2> /dev/null")
@@ -33,22 +39,18 @@ if __name__ == "__main__":
     parser.add_argument("-c", required=False)
     args = parser.parse_args()
     
-    def createDir(dir):
-        if not os.path.isdir(dir):
-            os.mkdir(dir)
-    
-    createDir(ttpdir)
-    createDir(serverdir)
     createDir(clientdir)
 
     if args.s:
-        generateKeyPair(serverdir)
-        generateCert(serverdir, "server")
+        if createDir(serverdir): # Only generate new pair if they don't already exist
+            generateKeyPair(serverdir)
+            generateCert(serverdir, "server")
     elif args.ca:
-        generateKeyPair(ttpdir)
-        generateCA()
+        if createDir(ttpdir):
+            generateKeyPair(ttpdir)
+            generateCA()
 
-        shutil.copyfile(f"{ttpdir}/ca-cert.pem", f"{clientdir}/ca.cert")
+            shutil.copyfile(f"{ttpdir}/ca-cert.pem", f"{clientdir}/ca.cert")
     elif args.c:
         generateKeyPair(clientdir)
         generateCert(clientdir, args.c)
