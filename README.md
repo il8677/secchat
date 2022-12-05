@@ -1,7 +1,136 @@
-# walkthrough
+# General Overview
+## File structure
+The following list should be helpful to discern what each file is responsible for at a glance
 
+### Server
+|   File Name               | Purpose                                                           |
+-------------------------------------------------------------------------------------------------
+| server.c                  | The main server file, accepts connections and spawns workers      |
+| db.c/h                    | API for dealing with the database                                 |
+| apicallbacks.h            | Definitions for the protocol api callbacks                        |
+| protocols/prot_*          | Protocol API callback implementations (ex. prot_client.h/c)       |
+| webserver/httputil.h/c    | Helper functions for the HTTP protocol                            |
+| webserver/route.h/c       | Implementation for the webserver routing (which URIs do what)     |
+| worker/worker.h/c         | The main worker driver, contains functions to spawn the worker    |
+| worker/workerapi.h/c      | The protocol agnostic server logic that handles client requests   |
+
+
+### Other
+|   File Name               | Purpose                                                           |
+-------------------------------------------------------------------------------------------------
+| client.c                  | The client file                                                   |
+| ui.h/c                    | Gets and processes user input, called by the client               |
+| api.h/c                   | The common structs / functions used by both server / client       |
+| crypto.h/c                | Functions to handle cryptography                                  |
+| linkedlist.h/c            | Linked list functions                                             |
+| util.h/c                  | General utility functins                                          |
+
+## Communication
+The server and native (non-web) client deals with api_msgs, which come in different types and contains all the infromation for a request / response (messages for example). The client and server  communicate by sending/recieving the api_msg instance directly over sockets. 
+
+
+The following list shows all the different api_msg types, and the information they contain.
+
+#### none
+Never actually sent, just a standin for no message
+
+#### status
+The message conveys some informational message, stores that message. (server->client)
+
+#### error
+The message has an errcode field containing an errorcode sent by the server. Error codes are defined in errcodes.h  (server->client)
+
+#### priv_msg
+The message represents a private message between two users. It contains a unix timestamp, two RSA public key encrypted messages (one for sender, one for recipient), and two unencrypted fields with the usernames of the sender and the recipient. RSA signed by sender. 
+
+The "from" field is filled out by the server, not the client. When the server sends the apimessage, only the "frommsg" field is populated, since the client only needs one of the messages (the other is unreadable anyway).
+
+#### pub_msg
+The message represents a public message to everyone. It contains a unix timestamp, the (unencrypted) message, a field with the senders username, and is RSA signed by the sender.
+
+The "from" field is filled out by the server, not the client.
+
+#### who
+The message contains a string with a list of all users. The string is only populated when sending server->client, since the other direction is a request.
+
+#### login / register
+The message contains a username and hashed password. The registration additionally contains the certificate and private key (see: additional data)
+
+#### login acknowledgement
+The message acknowledges a successful login from the server. Contains certificate and private key (see: additional data)
+
+#### exit
+No fields
+
+#### Key
+A request for another users public key, or a response of the public key. Contains certificate if it's a response (see: additional data)
+
+### Additional Data
+The fields for each message type is stored in a union, so an entire api_msg is the size of the maximum possible message type. In addition to this, api_msgs contain lengths for an optional key or certificate that is attached to the message. This data is usually thousands of bytes long, so it would be inefficient to transmit it as part of the main message, so the server / client only reads the extra data if the recieved message has the lengths set.
+
+There are three situations where this data is sent, the first is when a user logs in, their (encrypted) private key and public key is sent. The second is a key request, where the client (who presumably wants to send a private message) asks for a users certificate to encrypt the private message for the other user. The last situation is where the server sends a public message to a client, it attatches the certificate of the message sender so the client can verify the message. This will only be done once per sender, it is assumed the client stores the certificate for future use.
+
+### Handling
+Depending on the message recieved, and if it is server or clientside, the message is handled differently. A who message recieved by the server is treated as a request, and a who message is sent back with the string field filled in. The client will then handle it by printing the string. The various handlers in ui.c create messages from user input, called on in the function client_process_command (client.c). The server handles all messages in execute_request (worker.c). The client handles all messages from the server in execute_request (client.c).
+
+# Security
+
+## Measures
+
+### Code Safety
+No unsafe functions were used without explicitly sanitising fields. For example, strnlen is used instead of strlen, unless the variable was created locally (user input, disk reads) or sanitized. Most of the time safe calls are used even with sanitized inputs. Database calls either use bind or the sqlite3_printf "%Q" tag for strings, preventing SQL escaping.
+
+## Notes
+The username is used as the IV for the AES encrypted private key. It was our understanding that the IV could be public safely.
+The username is also used as the salt. A random string would've been better, but this still prevents rainbow tables.
+
+## Security Properties
+
+TLS between client and server is used providing defence against basic man in the middle attacks or just simply sending a spoofed message. The list below will not mention this fact since it's trivial, and will instead discuss measures against more sophisticated attacks.
+
+### Mallory cannot get information about private messages for which she is not either the sender or the intended recipient.
+This is done by encrypting private messages end-to-end. The server stores encrypted messages which can only be read if you have the private key from the sender or the recipient. As Mallory does not have them she cannot read them.
+
+### Mallory cannot send messages on behalf of another user.
+Every message is signed by the sender, and verified with a users certificate. The certificate is signed from the CA. Whenever we receive a message we verify that the certificate is correct and belongs to the person who actually sent the message, and that the signature is correct. Since Mallory cannot forge the signature, we can be sure that the message is sent from who it says it is.
+
+### Mallory cannot modify messages sent by other users.
+Again this comes down to the signing. If even only a single character gets changed the hash of the message will not be the same and the signature will not be correct. Thus if Mallory were to change the message the client would know the message got changed and will warn the user by printing "Unsigned!" before the message.
+
+### Mallory cannot find out users’ passwords, private keys, or private messages (even if the server is compromised).
+The database only stores hashed passwords. Even if the server is compromised Mallory cannot do much with this information as Mallory cannot undo the hash. Private keys are stored encrypted with the password using AES. Assuming that the password is indeed safe there is no way for Mallory to decrypt the private key. Then assumming that both the password and the private key are safe Mallory cannot decrypt the private messages as it does not have the private key. Note: the private keys could be brute forced if the user sets a bad password.
+
+### Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on.
+### Mallory cannot leak or corrupt data in the client or server programs.
+Well assuming that Mallory can compromise the server she actually could corrupt the data. However because of the signature the user/client would know that the data has been corrupted. The best effort was made to prevent any buffer overflows and we believe there shouldn't be a way to gain access to the systems through this program.
+
+### Mallory cannot crash the client or server programs.
+The best effort was made to prevent buffer overflows. Aside from big DDOS attacks, it should be safe.
+
+### The programs must never expose any information from the systems they run on, beyond what is required for the program to meet the requirements in the assignments.
+The best effort was made to prevent buffer overflows. Besides this, amd aside from side-channels, it should not be possible to discern system information with the program.
+
+### The programs must be unable to modify any files except for chat.db and the contents of the clientkeys and clientkeys directories, or any operating system settings, even if Mallory attempts to force it to do so. 
+The program only ever accesses the database (on the server) or their key directories, no other access is used.
+
+## possible attacks and their defenses
+
+### Man-in-the-middle
+TLS is used, the man in the middle could not spoof the initial handshake and the rest is protected. Hypothetically, even if someone got in the middle, All messages are signed by the private key, which can only be accessed with the users password, so getting in the middle wouldn't even get you much.
+
+### Buffer overflows
+Safe functions are used instead of their unsafe versions (strnlen vs strlen), unless the outputs were garunteed to be safe (come from a library and independent from networked input, db calls, file reads etc.).
+
+### Injection
+ Besides the aformentioned buffer overflow checks, we make sure any SQL input in message from the client are properly sanitised.
+
+### Padding oracle attack
+The defense of this attack is handled by openSSL. No AES decryption happens from the server so it's impossible to gain access to AES information from there.
+
+
+# Client details
 ## client initialization 
-When we initialize the client we connect to the server and check the server's certificate. If everything is fine we start the ssl handsake. When initializing we also create two linked lists. One we use to store certificates from other clients to look up public keys for when we are private messaging them or decrypting public messages. The other is used as a queue to temporarily store the private message we were about to send but for which we do not have the recipients certificate yet. A special KEY request is then send to the server which will provide us with the certificate of the user we want to privately communicate with.
+When we initialize the client we connect to the server and check the server's certificate. If everything is fine we start the ssl handsake. When initializing we also create two linked lists. One we use to store certificates from other users. The other is used as a queue to temporarily store private messages we don't have keys to encrypt yet.
 
 ## parsing input (client_process_command, client.c)
 The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct within the api_message. If the message is too long, the command is invalid or the amount of arguments is invalid we give an error and ask them to try again. Depending on the command a handler function is then called. 
@@ -10,16 +139,16 @@ The client starts with seperating the command from the message in "client_proces
 Depending on the command different steps are taken.
 
 -   ### register (input_handle_register| ui.c)    
-    When register is we first check if the password and/or the username is valid (not empty). We hash the password with the username as salt, generate a private/public key pair and request a certificate from the CA. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server. If the username was already taken we ask the user to use a different username. (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it so whatever.) 
+    When register is we first check if the password and/or the username is valid (not empty). We hash the password with the username as salt, generate a private/public key pair and request a certificate from the CA. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it, it's also a pretty neat solution, albeit less secure). If the username was already taken the server asks the user to use a different username.
 
 -   ### login  (input_handle_login| ui.c)  
-    After login is called we hash the password with the username as salt and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and then encrypt and decrypt a test string to verify the keys. This ensures that we have the same keypair every time even when logging in from different devices. (loginAck| client.c) 
+    After login is called we hash the password with the username as salt and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and then encrypt and decrypt a test string to verify the keys. This ensures that we have the same keypair every time even when logging in from different devices, and makes sure the server isn't sending us a fake keypair with a known private key. (loginAck| client.c) 
     
 -   ### private message (input_handle_privmsg| ui.c)
-    To send a private message we have to get the public key of the receipient so we can encrypt the message (using RSA). We first look through our linked list containing keys. If the key is not found in the linked list we request the key from the server and put the to be transmitted message in a queue (linked list) so we can send the message whenever we receive the key. When we receive the key (execute_request, handle_key| client.c) the authenticity of the certificate is verified. The key is then added to the list of keys and we go through the queue to see if there is a request we can fullfil now with the key. Continuing this, regardless of whether we already had the key or just got the key from the server we sign the message(hash and encrypt with our private key), encrypt a copy of the message with the recipients public key and a copy of the message with our own public key. These messages and the signature are then send to the server. 
+    To send a private message we have to get the public key of the receipient so we can encrypt the message (using RSA). This limits the message length, but we had a 160 byte message length limit anyway. We first look through local key cache. If the key is not found in the linked list we request the key from the server and put the to be transmitted message in a queue (linked list) so we can send the message whenever we receive the key. When we receive the key (execute_request, handle_key| client.c) the authenticity of the certificate is verified. The key is then added to the key cache and we go through the queue to see if there is a message we can send now with the key. Regardless of whether we already had the key or just got the key from the server we sign the message (hash and encrypt with our private key), encrypt a copy of the message with the recipients public key and a copy of the message with our own public key. These messages and the signature are then send to the server. 
 
 -   ### public message (input_handle_pubmsg| ui.c)
-    When sending a public message we use RSA digital signatures to make sure that what we send is not tampered with during transmission. We first compute the hash of the message and sign it with the sender's (our own) private key. Then we send the encrypted hash and the message over the wire where the receiving end computes the hash of the message and verifies the message by decrypting the signature using the senders public key. The server adds the certificate of the sender to the message and after checking for validity the recipient can extract the key. If the computed hash and the decryption of the signature are equal then the signature is correct and the message has not been tampered with.
+    When sending a public message we use RSA digital signatures to make sure that what we send is not tampered with during transmission. We first compute the hash of the message and encrypt it with the sender's (our own) private key. Then we send the encrypted hash and the message over the wire where the receiving end computes the hash of the message and verifies the message by decrypting the signature using the senders public key. If not already sent, the server adds the certificate of the sender to the message and after checking for validity the recipient can extract the key. If the computed hash and the decryption of the signature are equal then the signature is correct and the message has not been tampered with.
 
 -   ### users 
     No cryptography happens for the user call, we just set the message type and send it.
@@ -27,17 +156,27 @@ Depending on the command different steps are taken.
 -   ### exit 
     No cryptography happens for the exit call either, we just set the message type and send it.
 
+# Server Details
+
 ## server and worker
 The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify the request. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track with a block of shared memory, which the workers accesses when building the response to a /users command.
 
-### Worker API
-The server is designed to be protocol agnostic. The API to interact with the data is defined in workerapi.h. Files in the directory protocols/ handles interfacing with the different connections. The worker API interacts with function callbacks for send/recv/notify that are set depending on the protocol. This forms a sort of stack, with the lower transport-like layer dealing with protocol-based communications (ex. http or the client api), and the upper layer dealing with the actual requests, including forming api_msgs for the lower layer to send. The server spawns the appropriate worker to deal with different protocols depending on how a connetion is established. This also allows workers to change how they should handle requests. For example, the http api calls replace themselves with websocket api calls 
+## wrapping up
+If a message was recieved, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then decrypts and displays the correct message. Keys are handled differently as described in public and private messaging.   
+
+## Worker API
+
+Originally, the implementation was that the client sent the bytes of a local api_msg to the server, and vice versa. This worked well with just the native client, but when adding the HTTP protocol this was insufficient, as the server was quite rigid in only accepting api_msgs over the socket. To solve this, the server implementation was split into two parts: the _protocols_ and the _worker api_, instead of just having the worker. 
+
+With this, the main server logic (the worker api) is designed to be protocol agnostic. The code to interact with api_msg's is defined in workerapi.h. The different _protocols_ (in the directory protocols/) handle interfacing with the different types of connections, forming api_msgs out of them and giving it to the worker_api to handle. Instead of the worker directly sending/recieving from sockets like before, The worker API interacts with protocol-specific function callbacks to send / recieve api_msgs (apicallbacks.h). This forms a sort of stack, with the lower transport-like layer dealing with protocol-based communications (ex. native/websockets), and the upper layer dealing with the actual requests, including forming api_msgs for the lower layer to send. The server spawns the appropriate worker to deal with different protocols depending on how a connetion is established (server.c:handle_incoming). This also allows workers to dynamically change protocols. For example, the http protocol implementation replaces itself with the websocket api callbacks, passing control to the websocket protocol implementation.
+
+This was done for the bonus HTTP assignment, to allow for the different protocol in a clean way, but in theory this means the application should be easily expandable to other protocols such as IRC.
 
                                                     ---------------
                                                     |     db      |
                                                     ---------------
                                                     |  workerapi  |
-                            ----------   spawns     --------------- -> send, recv, notify
+                            ----------   spawns     --------------- V^ send, recv
                             | server | -----------> |  http | api | 
                             ----------   worker     ---------------
                                                     |     SSL     |
@@ -47,96 +186,22 @@ The server is designed to be protocol agnostic. The API to interact with the dat
                                                     |browsr|client|
                                                     ---------------
 
-## wrapping up
-If a message was recieved, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then decrypts and displays the correct message. Keys are handled differently as described in public and private messaging.   
-
-# messages
-## message types
-Messages contain a union that is composed of a struct for each message type with the appropriate fields for that message. Messages are built in ui.c handler functions, or in worker.c for the serverside.
-### status
-The message has a statusmsg field containing a string sent by the server.
-### error
-The message has an errcode field containing an errorcode sent by the server. This is processed by the client in the function error (client.c) where the appropriate error message is printed. Error codes are defined in errcodes.h 
-### priv_msg
-The message has a timestamp (unix), a from message field (encrypted with the senders public key), a from field, a to message field (encrypted with the recipients public key), a to field and a signature field(hashed and then signed with private key). 
-### pub_msg
-Identical to priv_msg without a to field and only containing one message (unencrypted), the signature field is also hashed and signed with a private key to ensure that the message is from the actual sender and has not been tampered with.
-### who
-The message contains a string with a list of all users. 
-### login / register
-The message contains a username and password (plaintext for now).
-
-### exit
-No fields
-
-## Handling
-Depending on the message recieved, and if it is server or clientside, the message is handled differently. A who message recieved by the server is treated as a request, and a who message is sent back with the string field filled in. The client will then handle it by printing the string. The various handlers in ui.c create messages from user input, called on in the function client_process_command (client.c). The server handles all messages in execute_request (worker.c). The client handles all messages from the server in execute_request (client.c).
-
-# server
-## layered security
-The entire attack surface was limited to the initial call to verify_request; when the packet leaves this function, it has the proverbial stamp of approval. However, each module is designed to be self sufficient, so the message will be further checked with calls to the database API, to ensure, for example, that the registration handler isn't handling a login message. The strings are also assumed to be malformed, and null termination is explicity set to avoid overflowing into the database, this is despite the fact that null termination is explicitly checked for in the verify_request function.
-
-## request verification
-The verify-request function double checks if a request if safe.
-
-### request authentication TODO: ?
-
-### sanity check
-The struct needs to be as safe as we created it ourselves, so null termination of strings is checked. since the struct is a union, a lot of the checks are code-duplicated, but keeping the checks seperate encourages explicit checks for other factors if needed.
-
-# client
-## message validity
-When parsing the input we check if the the command is valid, and the message is not too long. We also check if the amount of parameters given are correct and if they are not too long.
-
-## cryptography
-
-### message encryption TODO: we discard the message if signature is invalid right
-All messages have a signature which consists of the hashed message which is encrypted with the senders private key. Private messages are send to the server in twofold where one of the messages is encrypted with our own public key and one message is encrypted with the recipients public key. This ensures that all messages are end-to-end encrypted as they are stored encrypted in the server and the server does not have the private key to decrypt them. When receiving messages the client always checks if the signature is valid with help of the certificate which the client also verifies. If the signature is invalid we discard the message.
-
-## displaying messages
-When displaying the messages we make sure to never print more characters than the respective max length.
-
-# database
-## message containing sql commands
-The database api makes sure that an sql command in the message wont affect any database. This is handled by the sqlite3 library mprintf call with the %Q format specifier, which quotes any input and escapes any internal quotes, ensuring escape impossible.
-
-## security properties
-
-### Mallory cannot get information about private messages for which she is not either the sender or the intended recipient.
-This is done by encrypting private messages end-to-end. The server stores encrypted messages which can only be read if you have the private key from the sender or the recipient. As Mallory does not have them she cannot read them.
-
-### Mallory cannot send messages on behalf of another user. TODO: add some more maybe?
-Every message is signed and contains a certificate with the public key to decrypt it. The certificate is requested from the CA which we assume is trustworthy. Whenever we receive a message we verify that the certificate is correct and belongs to the person who actually sent the message. We then hash the message and compare it to the decryption of the encrypted hash (the signature). Since Mallory cannot forge such a valid certificate we can be sure that the actual sender is who they say they are.
-
-### Mallory cannot modify messages sent by other users. TODO: if the message got tampered with do we still show it?
-Again this comes down to the signing. If even only a single character gets changed the hash of the message will not be the same and the signature will not be correct. Thus if Mallory were to change the message the client would know the message got changed and would not show it.
-
-### Mallory cannot find out users’ passwords, private keys, or private messages (even if the server is compromised).
-The database only stores hashed salted passwords. Even if the server is compromised Mallory cannot do much with this information as Mallory cannot undo the hash. Frequency analysis is also not possible due to the salt. Private keys are stored encrypted with the password. Assuming that the password is indeed safe there is no way for Mallory to decrypt the private key. Then assumming that both the password and the private key are safe Mallory cannot decrypt the private messages as it does not have the private key.
-
-### Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on. TODO: not sure how we actually do this
-
-### Mallory cannot leak or corrupt data in the client or server programs. TODO: is this an actual good answer?
-Well assuming that Mallory can compromise the server she actually could corrupt the data. However because of the signature the user/client would know that the data has been corrupted.  
-
-### Mallory cannot crash the client or server programs. TODO: do we have anything in place to prevent the client from crashing?
-The server has a maximum number of clients it supports at a time making it hard for Mallory to overwork the server by connnecting lots of clients. 
-
-### The programs must never expose any information from the systems they run on, beyond what is required for the program to meet the requirements in the assignments. TODO: actual answer
-
-### The programs must be unable to modify any files except for chat.db and the contents of the clientkeys and clientkeys directories, or any operating system settings, even if Mallory attempts to force it to do so.  TODO: do we have anything in place for this?
 
 
-## possible attacks and their defenses
+# Bonus
+A webclient was implemented for this assignment. This is off by default, but if a second argument is present when running the server, it will be ran on port 443 (default for HTTPS). It can be accessed at https://localhost/ (*ON FIREFOX*, as per the assignemnent. Chrome doesn't work for some reason). Opening 443 requires the program to be ran with sudo, although the port can be changed in the initialization of server.c. Implemented is a basic webserver which serves web pages in the www/ directory. Routes and HTTP handling are setup in prot_http.c and route.h. POST requests were also implemented but are not used in favour of websockets, which are implemented in prot_wb.c. The connection is made and the javascript logic upgrades the connection to websockets, which is used to talk to the server.
 
-### Man-in-the-middle
-Our clients and server exchange certificates issued by the CA which is used to authenticate messages send by the owner of that certificate. An invalid certificate will not be accepted and we can therefore identify this type of attack. Also even if there were to be a man in the middle all the private information (passwords, private messages) are encrypted/hashed and thus useless if intercepted.
+The web interface itself is a bit janky, since CSS is not fun, but it is functionally OK. All security measures the native client has have also been implemented in the web client (with the exception of TLS certificate verificaiton, since that is handled by the browser).
 
-### Buffer overflows
-When handling input from a user we have several security checks in place which make sure the input does not exceed certain bounderies that could trigger potential buffer overflows. Input checks include but are not limited to: the amount, length, empty and type of arguments to make sure the input of the client is valid.
+## PLEASE NOTE
+1. The web client gets the TTP certificate from the server via HTTP request, this is obviously unsafe, and could be forged by the server. In a real situation the CA would be a real one that systems have access to anyway. This only affects verifying the certificates other users (which does have implications for the other security measures), but I could not think of a proper way to distribute this certificate to the webclient, but since the native client is assumed to have safe access to it, I assumed that serving it from the server would also be an OK shortcut, and it could be assumed that the server is unable to forge the CA for whatever reason.
+2. Registration is not possible using the web interface; One must log in with a user created from the CLI. This is because registration requires the generation of an RSA key pair and the signing from the TTP, and from a web interface there is no simple way to access the ttp script.
 
-### Injection
- Besides the aformentioned buffer overflow checks, we make sure any SQL input in message from the client are not executed during database handling. (See database section)
+## Implementation
+The serverside websockets protocol implementation encodes outgoing messages in JSON, sending it to the web client. The web client sends direct bytes, which are read into an api_msg. The difference in the ways messages are conveyed is because formatting json is much easier than parsing it. The rest is the same on the serverside, as the websocket protocol implementation translates incoming messages to api_msgs that the worker api can handle.
 
-### Padding oracle attack
-The defense of this attack is handled by openSSL and achieved through random padding.
+## Full steps to see the web page
+1. Run the server with (any) third argument, with the second argument indicating the port for the CLI client: `sudo ./server 2345 Y`
+2. Create an account in the CLI (connecting as usual): `/register username password`
+3. Open the URL in firefox (tested on the latest version, fresh install/no extensions or settings changed) `https://localhost`
+4. Since the certificate was signed by a made-up CA, you will have to click past the warning screen
