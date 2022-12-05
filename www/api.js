@@ -56,6 +56,11 @@ function nullpad( str, len ) {
 function fillBytes(b){
     return new Blob([b, new Uint8Array(SIZEOF_APIMSG-b.size)])
 }
+
+function removeNullBytes(msg){
+    return msg.replaceAll("\0", "");
+}
+
 // ==============================================================================================================================
 // Ugly Functions to format binary that represents api_msg, it was this or to parse JSON in C, so this felt like the lesser evil
 // ==============================================================================================================================
@@ -117,6 +122,7 @@ function getPubMsg(msg){
         new Uint32Array([0]),
         sign(privkey, msg),
         new Uint8Array(timestampSize),
+        new Uint32Array(MAX_USER_LEN),
         new String(msg)                      // msg
     ]);
 
@@ -221,7 +227,7 @@ function handleLoginAck(msg){
         if(pubkey != 0 || privkey != 0) return;
 
         pubkey = msg.cert;
-        privkey = aesDecrypt(api_username, api_password, msg.privkey);
+        privkey = removeNullBytes(aesDecrypt(api_username, api_password, msg.privkey));
         // TODO: Test if matches
 
         document.dispatchEvent(e_loggedIn);
@@ -258,7 +264,6 @@ function createWebsocket(){
 
     ws.onmessage = (event) => {
         const nremoved = event.data.replaceAll("\n", " "); // Remove newlines that could cause issues with json
-        console.log(nremoved);
 
         const msg = JSON.parse(nremoved);
 

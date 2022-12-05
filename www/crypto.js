@@ -20,9 +20,9 @@ function hexToBytes(hex) {
 
 // Returns bytes of signature
 function sign(privkeyPEM, msg){
-    var sig = new JKUR.crypto.Signature({"alg": "SHA1withRSA"});
+    var sig = new KJUR.crypto.Signature({"alg": "SHA1withRSA"});
 
-    sig.init(privkeyPEM);
+    sig.init(RSAKeyFromPEM(privkeyPEM));
     
     sig.updateString(msg);
 
@@ -30,6 +30,7 @@ function sign(privkeyPEM, msg){
 }
 
 function verify(signatureB64, msg, certPEM){
+    console.log("Verifying " + msg);
     var sig = new KJUR.crypto.Signature({"alg": "SHA1withRSA"});
 
     sig.init(certPEM);

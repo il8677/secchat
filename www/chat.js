@@ -2,12 +2,22 @@
 // Converts a message to a div and adds it
 function addMessage(msg){
     const dmSource = msg.type == msgtype.PRIV_MSG ? "@"+msg.to : "";
+    var verified = false;
 
     if(msg.type == msgtype.PRIV_MSG){
-        msg.msg = rsaDecrypt(privkey, msg.msg)
+        msg.msg = rsaDecrypt(privkey, msg.msg);
+        msg.msg = removeNullBytes(msg.msg); // We need to remove null byte since its part of the encrypted string
     }
 
-    const msgDiv = `<div class='message'>${formatUnix(msg.timestamp)} ${msg.from}: ${dmSource} ${msg.msg}</div>\n`;
+    // Verification
+    try{
+        console.log(msg.from);
+        console.log(keys.get(msg.from));
+        verified = verify(msg.signature, msg.msg, keys.get(msg.from));
+    }finally{
+    }
+
+    const msgDiv = `<div class='message'>${verified?"\u2713":"\u274C"} ${formatUnix(msg.timestamp)} ${msg.from}: ${dmSource} ${msg.msg}</div>\n`;
     document.getElementById("chat").innerHTML += msgDiv;
 }
 
