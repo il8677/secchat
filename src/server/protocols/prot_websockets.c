@@ -150,11 +150,31 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
         return send_frame(state, data, payloadLen, 0xA);
     case 0x2:
         // Check if data is correct size
-        if(payloadLen > sizeof(struct api_msg)){
-            printf("[websockets] Error, recieved data is too large");
+        if(payloadLen < sizeof(struct api_msg)){
+            printf("[websockets] Error, recieved data is too small\n");
             return -1;
         }
-        memcpy(msg, data, payloadLen);
+        memcpy(msg, data, sizeof(struct api_msg));
+        data += sizeof(struct api_msg);
+
+        // Check if remaining data is of correct size
+        if(msg->certLen + msg->encPrivKeyLen != payloadLen - sizeof(struct api_msg)){
+            printf("[websockets] Error, additional data doesn't add up\n");
+            return -1;
+        }
+        
+        // Additional data
+        if(msg->encPrivKeyLen){
+            msg->encPrivKey = malloc(msg->encPrivKeyLen);
+            memcpy(msg->encPrivKey, data, msg->encPrivKeyLen);
+            data += msg->encPrivKeyLen;
+        }
+
+        if(msg->certLen){
+            msg->cert = malloc(msg->certLen);
+            memcpy(msg->cert, data, msg->certLen);
+            data += msg->certLen;
+        }
         return 1;
     default:
         printf("[websockets] Unsupported opcode %x\n", opcode);
