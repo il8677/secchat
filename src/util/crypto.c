@@ -209,10 +209,13 @@ int crypto_verify_x509(X509* target, const char* name){
     if(!X509_verify(target, cakey)) return 0;
 
     X509_NAME* certname = X509_get_subject_name(target);
-    int nameLen = X509_NAME_get_text_by_NID(certname, NID_commonName, NULL, 0) + 1; // TODO: What happens with no name?
+    int nameLen = X509_NAME_get_text_by_NID(certname, NID_commonName, NULL, 0) + 1;
+
+    if(nameLen == -1) return 0;
 
     char *cn = malloc(nameLen+1);
     X509_NAME_get_text_by_NID(certname, NID_commonName, cn, nameLen+1);
+
     char valid = !strcmp(cn, name);
     free(cn);
 
