@@ -64,7 +64,7 @@ worker.o: src/server/worker/worker.c src/util/util.h src/server/worker/worker.h 
 
 client: sslnonblock.o client.o api.o ui.o util.o crypto.o linkedlist.o
 
-server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o linkedlist.o protwb.o crypto.o
+server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o linkedlist.o protwb.o crypto.o websockets.o
 
 keys-server: keys-ttp
 	python3 ttp.py -s
