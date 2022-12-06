@@ -17,7 +17,6 @@
  */
 void ui_state_free(struct ui_state* state) {
   assert(state);
-
 }
 
 /**
@@ -62,13 +61,17 @@ int message_too_long(char* msg) {
   return strlen(msg)+1 > MAX_MSG_LEN;  
 }
 
-void privmsg_encrypt(RSA* key, X509* selfcert, X509* other, struct api_msg* msg){
+void privmsg_encrypt(RSA* key, X509* selfcert, X509* othercert, struct api_msg* msg){
   msg->type = PRIV_MSG;
 
   // The message is stored in frommsg, sign, encrypt and store. The recipient is already set
   // Note: this is from user input, so priv_msg.from *should* be a safe string. strnlen is used for extra safety
-  crypto_RSA_sign(key, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN), (unsigned char*)msg->priv_msg.signature);
-  crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, other, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN-1)+1);
+  crypto_RSA_sign(key, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN-1), (unsigned char*)msg->priv_msg.signature);
+
+  // Encrypt for recipient
+  crypto_RSA_pubkey_encrypt(msg->priv_msg.tomsg, othercert, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN-1)+1);
+
+  // Encrypt for us
   crypto_RSA_pubkey_encrypt(msg->priv_msg.frommsg, selfcert, msg->priv_msg.frommsg, strnlen(msg->priv_msg.frommsg, MAX_MSG_LEN-1)+1);
 }
 
@@ -201,6 +204,7 @@ int input_handle_pubmsg(RSA* key, struct api_msg* apimsg, char* p) {
   apimsg->type = PUB_MSG;
   strncpy(apimsg->pub_msg.msg, p_start, MAX_MSG_LEN);
 
+  // Sign message
   crypto_RSA_sign(key, p_start, strlen(p_start), (unsigned char*)apimsg->pub_msg.signature); 
 
   return 0;

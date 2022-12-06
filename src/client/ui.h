@@ -24,6 +24,6 @@ int input_handle_register(struct api_msg* apimsg, char* p, char** passwordout, c
 int input_handle_pubmsg(RSA* key, struct api_msg* apimsg, char* p);
 
 /// @brief Prepares a privmessage for sending by encrpyting
-void privmsg_encrypt(RSA* key, X509* selfcert, X509* other, struct api_msg* msg);
+void privmsg_encrypt(RSA* key, X509* selfcert, X509* othercert, struct api_msg* msg);
 
 #endif /* defined(_UI_H_) */
