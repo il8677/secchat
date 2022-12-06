@@ -268,7 +268,7 @@ function formatUnix(unix_timestamp){
 }
 
 function createWebsocket(){
-    const ws = new WebSocket("ws://" + location.host);
+    const ws = new WebSocket("wss://" + location.host);
 
     ws.onmessage = (event) => {
         const nremoved = event.data.replaceAll("\n", " "); // Remove newlines that could cause issues with json

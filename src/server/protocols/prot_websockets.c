@@ -31,7 +31,6 @@ int send_frame(struct api_state* state, uint8_t* payload, uint64_t length, char 
 int wb_api_to_json_send(struct api_state* state, struct api_msg* msg){
     char* json = api_msg_to_json(msg);
     int res = send_frame(state, (unsigned char*)json, strlen(json), 0x1);
-    printf("Sent len %ld json %s\n", strlen(json), json);
     free(json);
 
     return res == 0;
