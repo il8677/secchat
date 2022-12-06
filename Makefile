@@ -6,7 +6,6 @@ LDLIBS=-lsqlite3 -lcrypto -lssl
 
 all: client server
 
-# TODO: fix this mess
 
 clean:
 	rm -f server client *.o *.db*
