@@ -17,6 +17,9 @@ ui.o: src/client/ui.c src/client/ui.h
 protwb.o: src/server/protocols/prot_websockets.c src/server/protocols/prot_websockets.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
+websockets.o: src/server/webserver/websockets.c src/server/webserver/websockets.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
 sslnonblock.o: vendor/ssl-nonblock.c vendor/ssl-nonblock.h
 	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
