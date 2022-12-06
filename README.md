@@ -10,6 +10,7 @@ The following list should be helpful to discern what each file is responsible fo
 | apicallbacks.h            | Definitions for the protocol api callbacks                        |
 | protocols/prot_*          | Protocol API callback implementations (ex. prot_client.h/c)       |
 | webserver/httputil.h/c    | Helper functions for the HTTP protocol                            |
+| webserver/websockets.h/c  | Helper functions for the websockets protocol                      |
 | webserver/route.h/c       | Implementation for the webserver routing (which URIs do what)     |
 | worker/worker.h/c         | The main worker driver, contains functions to spawn the worker    |
 | worker/workerapi.h/c      | The protocol agnostic server logic that handles client requests   |

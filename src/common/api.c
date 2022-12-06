@@ -23,6 +23,7 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
 
   if(res <= 0) return -1;
 
+  // Explicity set these pointers to null since they don't mean anything over the wire
   msg->encPrivKey = NULL;
   msg->cert = NULL;
 
@@ -31,7 +32,8 @@ int api_recv(struct api_state* state, struct api_msg* msg) {
     msg->encPrivKey = malloc(msg->encPrivKeyLen);
     res = ssl_block_read(state->ssl, state->fd, msg->encPrivKey, msg->encPrivKeyLen);
     if(res <= 0) return -1;
-    if(res != msg->encPrivKeyLen) return -1; // Recieved wrong length, malformed packet = drop peer
+    if(res != msg->encPrivKeyLen) return -1; // Recieved wrong length, malformed packet = drop peer'
+    // We don't null terminate this since it's binary data
   }
 
   if(msg->certLen){
@@ -66,7 +68,6 @@ void api_msg_free(struct api_msg* msg) {
 /// @param state The api state
 /// @param msg The API message
 /// @return -1 if error, 1 if success
-
 int api_send(struct api_state* state, struct api_msg* msg){
   assert(state);
   assert(msg);

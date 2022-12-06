@@ -116,6 +116,7 @@ struct api_msg {
   char* cert;
 };
 
+// Common state for the server / client
 struct api_state {
   int fd;
 

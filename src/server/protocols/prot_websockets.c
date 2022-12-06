@@ -5,38 +5,16 @@
 
 #include "../worker/workerapi.h"
 #include "../webserver/httputil.h"
+#include "../webserver/websockets.h"
 #include "../../../vendor/ssl-nonblock.h"
 #include "../../util/crypto.h"
 
-#define MAX_HEADER_SIZE 14
-
-int send_header(struct api_state* state, uint64_t length, char opcode){
-    uint8_t header[MAX_HEADER_SIZE];
-    uint8_t headerLen = 0;
-    memset(header, 0, MAX_HEADER_SIZE);
-
-    header[headerLen++] = opcode | 0x80; // Opcode and fin
-
-    // Fill in length
-    uint8_t len1;
-    headerLen += 1;
-    if(length <= 125) len1 = length;
-    else if (length <= UINT32_MAX) {
-        len1 = 126;
-        *(uint16_t*)(header+2) = htons((uint16_t)length);
-        headerLen += 2;
-    }
-    else {
-        len1 = 127;
-        *(uint64_t*)(header+2) = htobe32((uint64_t)length);
-        headerLen += 8;
-    }
-
-    header[1] = len1;
-    
-    return ssl_block_write(state->ssl, state->fd, header, headerLen);
-}
-
+/// @brief Sends a frame to the client
+/// @param state api state
+/// @param payload pointer to the payload
+/// @param length length of the payload
+/// @param opcode opcode to send under
+/// @return -1 if failure
 int send_frame(struct api_state* state, uint8_t* payload, uint64_t length, char opcode){
     int res = send_header(state, length, opcode);
 
@@ -46,29 +24,10 @@ int send_frame(struct api_state* state, uint8_t* payload, uint64_t length, char 
     return res > 0 ? 0 : -1;
 }
 
-// Calculate websockets magic string
-// I dont know who designed this process, but web sockets requires a transformation of a key to be certain that webscokets are supported
-// Network protocols seem to be real hacked together sometimes...
-char* protwb_processKey(const char *str){
-    const char* magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-    const uint16_t concatLen = strlen(str) + strlen(magic);
-
-    // Concatanate the magic with the string
-    char* buffer = malloc(concatLen + 1);
-    sprintf(buffer, "%s%s", str, magic);
-
-    // Hash and b64
-    uint8_t hashResult[SHA_DIGEST_LENGTH];
-    char* b64result;
-
-    crypto_hash(buffer, concatLen, hashResult);
-    Base64Encode(hashResult, SHA_DIGEST_LENGTH, &b64result);
-
-    free(buffer);
-
-    return b64result;
-}
-
+/// @brief Sends an api_msg as json
+/// @param state api state
+/// @param msg api_msg to send
+/// @return 1 if success
 int wb_api_to_json_send(struct api_state* state, struct api_msg* msg){
     char* json = api_msg_to_json(msg);
     int res = send_frame(state, (unsigned char*)json, strlen(json), 0x1);
@@ -76,15 +35,6 @@ int wb_api_to_json_send(struct api_state* state, struct api_msg* msg){
     free(json);
 
     return res == 0;
-}
-
-static int msg_query_cb(struct worker_state* state, struct api_msg* msg){
-    return wb_api_to_json_send(&state->api , msg) == 1 ? 0 : -1;
-}
-
-int protwb_notify(struct worker_state* state){
-    db_get_messages(&state->dbConn, state, state->uid, msg_query_cb, &state->lastviewed);
-    return 0;
 }
 
 int protwb_send(struct worker_state* state, struct api_msg* msg){
@@ -104,6 +54,7 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
     if(len <= 0) {
         return -1;
     }
+
     // Get header values
     uint8_t fin = buf[0] >> 7;
     uint8_t opcode = buf[0] & 0x0f;
@@ -112,7 +63,7 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
 
     uint64_t payloadLen = len1;
 
-    uint8_t* data = buf+2;
+    uint8_t* data = buf+2; // Pointer to the next unprocessed part of the data
 
     if(!fin){
         printf("[websockets] Error, recieved continuation bit, not supported!\n");
@@ -120,6 +71,7 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
     }
 
     // Read the appropriate length
+    // Websockets store a dynamically sized length field, this code parses that
     if(len1 == 126){
         payloadLen = htons(*(uint16_t*)data);
         data += 2;
@@ -133,7 +85,7 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
         return -1;
     }
 
-    // Unmask data
+    // Unmask data (See RFC6455 5.3)
     if(mask){
         uint8_t* maskData = data;
         data += 4;
@@ -151,7 +103,7 @@ int protwb_recv(struct worker_state* wstate, struct api_msg* msg){
     {
     case 0x9: // Ping
         return send_frame(state, data, payloadLen, 0xA);
-    case 0x2:
+    case 0x2: // Binary data
         // Check if data is correct size
         if(payloadLen < sizeof(struct api_msg)){
             printf("[websockets] Error, recieved data is too small\n");
