@@ -75,11 +75,11 @@ function RSAKeyFromPEM(keyPEM){
 
 // Encrypts message, returns bytes
 function rsaEncrypt(keyCertPEM, msg){
-    return hexToBytes(KJUR.crypto.Cipher.encrypt(msg, RSAKeyFromCert(keyCertPEM), "RSAOAEP"));
+    return hexToBytes(KJUR.crypto.Cipher.encrypt(msg, RSAKeyFromCert(keyCertPEM), "RSA"));
 }
 
 function rsaDecrypt(privkeyPEM, msgBytes){
-    return KJUR.crypto.Cipher.decrypt(base64ToHex(msgBytes), RSAKeyFromPEM(privkeyPEM), "RSAOAEP");
+    return KJUR.crypto.Cipher.decrypt(base64ToHex(msgBytes), RSAKeyFromPEM(privkeyPEM), "RSA");
 }
 
 function aesDecrypt(iv, password, encText){

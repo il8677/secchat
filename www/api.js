@@ -87,6 +87,8 @@ function getPrivMsg(msg, to){
 
     const signature = sign(privkey, msg);
 
+    msg+="\0"; // Add nullbyte so it's encrypted and clients can correctly read the message
+
     otherkey = keys.get(to);
 
     msgfrom = rsaEncrypt(pubkey, msg);
@@ -229,15 +231,6 @@ function handleLoginAck(msg){
         pubkey = msg.cert;
         privkey = removeNullBytes(aesDecrypt(api_username, api_password, msg.privkey));
         
-        var testString = "Hello World!";
-        var bytes = rsaEncrypt(pubkey, testString);
-
-        if(rsaDecrypt(privkey, bytes) != testString){ // Cant trust cert, ignore
-            pubkey = 0;
-            privkey = 0;
-            return;
-        }
-
         document.dispatchEvent(e_loggedIn);
     }
 }
