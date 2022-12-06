@@ -52,7 +52,7 @@ char* api_msg_to_json(struct api_msg* msg){
     switch(msg->type){
         case ERR:
             json = malloc(allocatedSize);
-            jsonLoc += snprintf(json, "{\"type\": %d, \"errcode\": %d", msg->type, msg->errcode);
+            jsonLoc += sprintf(json, "{\"type\": %d, \"errcode\": %d", msg->type, msg->errcode);
             break;
         case STATUS:
             allocatedSize += sizeof(msg->status.statusmsg);
