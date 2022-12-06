@@ -1,3 +1,5 @@
+// Responsible for setting up a worker, basically just does a handshake, loops over select, and calls the worker api to handle incoming stuff
+
 #include "worker.h"
 
 #include <assert.h>

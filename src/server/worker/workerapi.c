@@ -9,6 +9,7 @@
 #include "workerapi.h"
 #include "../../common/errcodes.h"
 
+// Macro to log if a flag is <0
 #define LOGIF(x, y, ...)if(y<0) printf(x, __VA_ARGS__);
 
 /// @brief Checks if the client is logged in
@@ -46,14 +47,15 @@ static int verify_request(struct worker_state* state, struct api_msg* msg) {
 }
 
 static int prep_msg_share(struct worker_state* state, struct api_msg* msg){
-  // Attach sender cert if it wasn't yet sent
+  // Attach sender cert if it wasn't yet sent (if the unique add was successful)
   if(list_add(state->sentCerts, msg->priv_msg.from, NULL, 0, 1) == 0){  
-    db_add_cert(&state->dbConn, msg, msg->priv_msg.from);
+    db_attatch_cert(&state->dbConn, msg, msg->priv_msg.from);
   }
 
   return state->apifuncs.send(state, msg) == 1 ? 0 : -1;
 }
 
+// Handles a notification
 int notify(struct worker_state* state) {
   if(is_logged_in(state))
     db_get_messages(&state->dbConn, state, state->uid, prep_msg_share, &state->lastviewed);
@@ -82,6 +84,7 @@ static int notify_workers(struct worker_state* state) {
   return 0;
 }
 
+// Sets the worker to a new user
 static void setUser(struct worker_state* state, int uid, const char* username){
     state->uid = uid;
 
@@ -103,6 +106,7 @@ int worker_state_init(struct worker_state* state, int connfd,
   /* set up API state */
   api_state_init(&state->api, connfd, TLS_server_method());
 
+  // Not logged in by default
   state->uid = -1;
 
   db_state_init(&(state->dbConn));
@@ -112,9 +116,11 @@ int worker_state_init(struct worker_state* state, int connfd,
 
   state->apifuncs = callbacks;
 
+  // The server private key and certificate
   SSL_use_certificate_file(state->api.ssl, "serverkeys/cert.pem", SSL_FILETYPE_PEM);
   SSL_use_PrivateKey_file(state->api.ssl, "serverkeys/priv.pem", SSL_FILETYPE_PEM);
 
+  // List of which certs we have sent to the client
   state->sentCerts = list_init();
 
   return 0;
@@ -142,6 +148,7 @@ int handle_client_request(struct worker_state* state) {
   assert(state);
 
   /* wait for incoming request, set eof if there are no more requests */
+  // This calls the protocol callback passed during initialization
   r = state->apifuncs.recv(state, &msg);
   if (r == -1) {
     printf("server receive eof\n");
@@ -178,6 +185,7 @@ int handle_client_request(struct worker_state* state) {
 }
 
 // Spagetti code ahead!
+// Handles a request
 int execute_request(struct worker_state* state,
                            const struct api_msg* msg) {
   int res = 0;
@@ -188,7 +196,9 @@ int execute_request(struct worker_state* state,
 
   switch (msg->type) {
     case KEY:
-      res = db_add_cert(&state->dbConn, &responseData, msg->key.who);
+      // Send back the requested key
+      res = db_attatch_cert(&state->dbConn, &responseData, msg->key.who);
+
       if(res == ERR_NO_USER){
          res = ERR_RECIPIENT_INVALID;
       }else if(res >= 0){
@@ -196,6 +206,7 @@ int execute_request(struct worker_state* state,
         responseData.type = KEY;
         memcpy(responseData.key.who, msg->key.who, MAX_USER_LEN);
 
+        // Keep track of the keys we have already sent 
         list_add(state->sentCerts, msg->key.who, NULL, 0, 1);
       }
       break;
@@ -249,8 +260,8 @@ int execute_request(struct worker_state* state,
 
         setUser(state, res, msg->login.username);
         // Add the users key pair to the acknowledgement
-        db_add_cert(&state->dbConn, &responseData, msg->login.username);
-        db_add_privkey(&state->dbConn, &responseData, msg->login.username);
+        db_attatch_cert(&state->dbConn, &responseData, msg->login.username);
+        db_attach_privkey(&state->dbConn, &responseData, msg->login.username);
       } 
       break;
     case REG: 
@@ -270,8 +281,8 @@ int execute_request(struct worker_state* state,
         setUser(state, res, msg->reg.username);
 
         // Add the users key pair to the acknowledgement
-        db_add_cert(&state->dbConn, &responseData, msg->reg.username);
-        db_add_privkey(&state->dbConn, &responseData, msg->reg.username);
+        db_attatch_cert(&state->dbConn, &responseData, msg->reg.username);
+        db_attach_privkey(&state->dbConn, &responseData, msg->reg.username);
       }
       break; 
     case EXIT:

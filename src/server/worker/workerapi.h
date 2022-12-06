@@ -35,6 +35,8 @@ int notify(struct worker_state* state);
  * @param pipefd_w2s   pipe to notify server (write something to notify)
  * @param pipefd_s2w   pipe to be notified by server (can read when notified)
  * @param name         pointer to shared memory for name
+ * @param index        The index to used in shared memory
+ * @param callbacks    The struct of protocol callbacks to use
  */
 int worker_state_init(struct worker_state* state, int connfd, int server_fd, char* name, int index, struct api_callbacks callbacks);
 

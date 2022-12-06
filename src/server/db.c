@@ -209,7 +209,7 @@ int verify_login(struct db_state* state, const char* username, const char* passw
 
 }
 
-int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* username){
+int db_attach_privkey(struct db_state* state, struct api_msg* msg, const char* username){
     int id = nametoid(state, username);
     int retvalue = 0;
     if(id < 0) return id;
@@ -220,7 +220,9 @@ int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* user
     SQL_CALL(sqlite3_prepare(state->db, query, -1, &statement, 0), state->db, ERR_SQL, retvalue);
 
     if(sqlite3_step(statement) == SQLITE_ROW){
+        // Store length and the key in the msg
         msg->encPrivKeyLen = sqlite3_column_int(statement, 1);
+
         msg->encPrivKey = malloc(msg->encPrivKeyLen);
         memcpy(msg->encPrivKey, sqlite3_column_blob(statement, 0), msg->encPrivKeyLen);
     }
@@ -233,7 +235,7 @@ int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* user
 }
 
 
-int db_add_cert(struct db_state* state, struct api_msg* msg, const char* username){
+int db_attatch_cert(struct db_state* state, struct api_msg* msg, const char* username){
     int id = nametoid(state, username);
     int retvalue = 0;
     if(id < 0) return id;

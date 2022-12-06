@@ -31,19 +31,19 @@ void db_state_free(struct db_state* state);
 /// @return 0 if OK, error code otherwise
 int db_get_messages(struct db_state* state, struct worker_state* astate, int uid, int(*cb) (struct worker_state*, struct api_msg*), timestamp_t* lastviewed);
 
-/// @brief Adds a privkey to an apimsg
+/// @brief Attatches a privkey to an apimsg
 /// @param state db state
 /// @param msg apimsg to add to
 /// @param username The usernames private key to add
 /// @return 0 if OK, error code otherwise
-int db_add_privkey(struct db_state* state, struct api_msg* msg, const char* username);
+int db_attach_privkey(struct db_state* state, struct api_msg* msg, const char* username);
 
-/// @brief Adds a cert to an apimsg
+/// @brief Attatches a cert to an apimsg
 /// @param state db state
 /// @param msg apimsg to add to
 /// @param username The usernames cert to add
 /// @return 0 if OK, error code otherwise
-int db_add_cert(struct db_state* state, struct api_msg* msg, const char* username);
+int db_attatch_cert(struct db_state* state, struct api_msg* msg, const char* username);
 
 /// @brief Adds a public message to the database
 /// @param state db state

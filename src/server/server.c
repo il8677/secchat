@@ -357,10 +357,12 @@ static int handle_incoming(struct server_state* state) {
     return -1;
   }
   /* handle ready file descriptors */
+  // Native client connection
   if (FD_ISSET(state->sockfd, &readfds)) {
     if (handle_connection(state, state->sockfd, (struct api_callbacks){protc_send, protc_recv}) != 0) success = 0;
   }
   
+  // HTTPS connection
   if (FD_ISSET(state->httpsock, &readfds)){
     printf("Incoming https connection\n");
     if (handle_connection(state, state->httpsock, (struct api_callbacks){protht_send, protht_recv}) != 0) success = 0;
