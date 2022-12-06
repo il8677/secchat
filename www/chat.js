@@ -37,6 +37,8 @@ function handleMessageSend(event){
     }else{
         sendData(getPubMsg(message));
     }
+
+    form.reset();
 }
 
 function who(){
