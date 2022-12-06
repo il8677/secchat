@@ -30,7 +30,7 @@ The following list should be helpful to discern what each file is responsible fo
 | util.h/c                  | General utility functins                                          |
 
 ## Communication
-The server and native (non-web) client deals with api_msgs, which come in different types and contains all the infromation for a request / response (messages for example). The client and server  communicate by sending/recieving the api_msg instance directly over sockets. The type is indicated by an enum (msg_type_t), and indicate different structs in a union within an api_msg object has been filled out.
+The server and native (non-web) client deals with api_msgs, which come in different types and contains all the information for a request / response (messages for example). The client and server  communicate by sending/recieving the api_msg instance directly over sockets. The type is indicated by an enum (msg_type_t), and indicate different structs in a union within an api_msg object that has been filled out.
 
 The following list shows all the different api_msg types, and the information they contain.
 
@@ -54,7 +54,7 @@ The message represents a public message to everyone. It contains a unix timestam
 The "from" field is filled out by the server, not the client.
 
 #### who
-The message contains a string with a list of all users. The string is only populated when sending server->client, since the other direction is a request.
+The message contains a string with a list of all users. The string is only populated when sending from server->client, since the other direction is a request.
 
 #### login / register
 The message contains a username and hashed password. The registration additionally contains the certificate and private key (see: additional data)
