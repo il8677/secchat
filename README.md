@@ -1,3 +1,4 @@
+
 # General Overview
 ## File structure
 The following list should be helpful to discern what each file is responsible for at a glance
@@ -157,9 +158,8 @@ Depending on the command different steps are taken.
     No cryptography happens for the exit call either, we just set the message type and send it.
 
 # Server Details
-
 ## server and worker
-The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify the request. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track with a block of shared memory, which the workers accesses when building the response to a /users command.
+The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify any requests incoming. The checks ensure the safety of the message and is disccussed later. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track with a block of shared memory, which the workers accesses when building the response to a /users command.
 
 ## wrapping up
 If a message was recieved, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then decrypts and displays the correct message. Keys are handled differently as described in public and private messaging.   
@@ -186,11 +186,8 @@ This was done for the bonus HTTP assignment, to allow for the different protocol
                                                     |browsr|client|
                                                     ---------------
 
-
-
 # Bonus
 A webclient was implemented for this assignment. This is off by default, but if a second argument is present when running the server, it will be ran on port 443 (default for HTTPS). It can be accessed at https://localhost/ (*ON FIREFOX*, as per the assignemnent. Chrome doesn't work for some reason). Opening 443 requires the program to be ran with sudo, although the port can be changed in the initialization of server.c. Implemented is a basic webserver which serves web pages in the www/ directory. Routes and HTTP handling are setup in prot_http.c and route.h. POST requests were also implemented but are not used in favour of websockets, which are implemented in prot_wb.c. The connection is made and the javascript logic upgrades the connection to websockets, which is used to talk to the server.
-
 The web interface itself is a bit janky, since CSS is not fun, but it is functionally OK. All security measures the native client has have also been implemented in the web client (with the exception of TLS certificate verificaiton, since that is handled by the browser).
 
 ## PLEASE NOTE
