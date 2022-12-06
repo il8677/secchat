@@ -4,6 +4,7 @@
 The following list should be helpful to discern what each file is responsible for at a glance
 
 ### Server
+
 |   File Name               | Purpose                                                           |
 -------------------------------------------------------------------------------------------------
 | server.c                  | The main server file, accepts connections and spawns workers      |
@@ -18,6 +19,7 @@ The following list should be helpful to discern what each file is responsible fo
 
 
 ### Other
+
 |   File Name               | Purpose                                                           |
 -------------------------------------------------------------------------------------------------
 | client.c                  | The client file                                                   |
