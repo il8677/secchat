@@ -31,7 +31,7 @@ www_route* www_route_post_init(const char* path, post_cb_t cb);
 /// @return the www_route object
 void www_route_post_initadd(www_route* head, const char* path, post_cb_t cb);
 
-
+/// @brief Frees an entire route list
 void www_route_free(www_route* head);
 
 /// @brief Finds a GET route

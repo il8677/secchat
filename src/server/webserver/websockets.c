@@ -14,13 +14,13 @@
 // Calculate websockets magic string
 // I dont know who designed this process, but web sockets requires a transformation of a key to be certain that webscokets are supported
 // Network protocols seem to be real hacked together sometimes...
-char* protwb_processKey(const char *str){
+char* protwb_processKey(const char *key){
     const char* magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-    const uint16_t concatLen = strlen(str) + strlen(magic);
+    const uint16_t concatLen = strlen(key) + strlen(magic);
 
     // Concatanate the magic with the string
     char* buffer = malloc(concatLen + 1);
-    sprintf(buffer, "%s%s", str, magic);
+    sprintf(buffer, "%s%s", key, magic);
 
     // Hash and b64
     uint8_t hashResult[SHA_DIGEST_LENGTH];
@@ -35,13 +35,14 @@ char* protwb_processKey(const char *str){
 }
 
 int send_header(struct api_state* state, uint64_t length, char opcode){
-    uint8_t header[MAX_HEADER_SIZE];
+    char header[MAX_HEADER_SIZE];
     uint8_t headerLen = 0;
+
     memset(header, 0, MAX_HEADER_SIZE);
 
     header[headerLen++] = opcode | 0x80; // Opcode and fin
 
-    // Fill in length
+    // Fill in variable length
     uint8_t len1;
     headerLen += 1;
     if(length <= 125) len1 = length;
