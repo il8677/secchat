@@ -12,10 +12,13 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-#include "util.h"
-#include "worker.h"
+#include "../util/util.h"
+#include "worker/worker.h"
+#include "protocols/prot_client.h"
+#include "protocols/prot_http.h"
+#include "apicallbacks.h"
 
-#include "api.h"
+#include "../common/api.h"
 
 struct server_child_state {
   int worker_fd;  /* server <-> worker bidirectional notification channel */
@@ -24,6 +27,8 @@ struct server_child_state {
 
 struct server_state {
   int sockfd;
+  int httpsock;
+
   struct server_child_state children[MAX_CONNECTIONS];
   char* sharedmem;
   int child_count;
@@ -133,8 +138,9 @@ static void close_server_handles(struct server_state* state) {
 
 /// @brief Handle an incoming connection
 /// @param state The server state
+/// @param callbacks The API callbacks to use for the connection
 /// @return 
-static int handle_connection(struct server_state* state) {
+static int handle_connection(struct server_state* state, int fd, struct api_callbacks callbacks) {
   struct sockaddr addr;
   socklen_t addrlen = sizeof(addr);
   int connfd;
@@ -142,9 +148,8 @@ static int handle_connection(struct server_state* state) {
   int sockets[2];
 
   assert(state);
-
   /* accept incoming connection */
-  connfd = accept(state->sockfd, &addr, &addrlen);
+  connfd = accept(fd, &addr, &addrlen);
   if (connfd < 0) {
     if (errno == EINTR) return 0;
     perror("error: accepting new connection failed");
@@ -171,7 +176,7 @@ static int handle_connection(struct server_state* state) {
     /* worker process */
     close(sockets[0]);
     close_server_handles(state);
-    worker_start(connfd, sockets[1], state->sharedmem, index);
+    worker_start(connfd, sockets[1], state->sharedmem, index, callbacks);
     /* never reached */
     exit(1);
   }
@@ -283,7 +288,7 @@ static void register_signals(void) {
 
 static void usage(void) {
   printf("usage:\n");
-  printf("  server port\n");
+  printf("  server port [optional: second argument for web server]\n");
   exit(1);
 }
 
@@ -299,10 +304,10 @@ static int server_state_init(struct server_state* state) {
   for (i = 0; i < MAX_CONNECTIONS; i++) {
     state->children[i].worker_fd = -1;
   }
+  state->httpsock = -1;
 
   state->sharedmem = mmap(NULL, MAX_USER_LEN, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   memset(state->sharedmem, '\0', MAX_USER_LEN*MAX_CONNECTIONS);
-
 
   return 0;
 }
@@ -329,6 +334,8 @@ static int handle_incoming(struct server_state* state) {
   FD_ZERO(&writefds);
   /* wake on for incoming connections */
   FD_SET(state->sockfd, &readfds);
+  FD_SET(state->httpsock, &readfds);
+
   fdmax = state->sockfd;
   for (i = 0; i < MAX_CONNECTIONS; i++) {
     worker_fd = state->children[i].worker_fd;
@@ -343,16 +350,22 @@ static int handle_incoming(struct server_state* state) {
   }
 
   /* wait for at least one to become ready */
-  r = select(fdmax+1, &readfds, &writefds, NULL, NULL);
+  r = select(fdmax+2, &readfds, &writefds, NULL, NULL);
   if (r < 0) {
     if (errno == EINTR) return 0;
     perror("error: select failed");
     return -1;
   }
-
   /* handle ready file descriptors */
+  // Native client connection
   if (FD_ISSET(state->sockfd, &readfds)) {
-    if (handle_connection(state) != 0) success = 0;
+    if (handle_connection(state, state->sockfd, (struct api_callbacks){protc_send, protc_recv}) != 0) success = 0;
+  }
+  
+  // HTTPS connection
+  if (FD_ISSET(state->httpsock, &readfds)){
+    printf("Incoming https connection\n");
+    if (handle_connection(state, state->httpsock, (struct api_callbacks){protht_send, protht_recv}) != 0) success = 0;
   }
 
   for (i = 0; i < MAX_CONNECTIONS; i++) {
@@ -381,9 +394,12 @@ int main(int argc, char **argv) {
   uint16_t port;
   struct server_state state;
 
+  int doWebserver = 0;
+
   /* check arguments */
-  if (argc != 2) usage();
+  if (argc < 2) usage();
   if (parse_port(argv[1], &port) != 0) usage();
+  if (argc == 3) doWebserver = 1;
 
   /* preparations */
   server_state_init(&state);
@@ -392,6 +408,15 @@ int main(int argc, char **argv) {
   /* start listening for connections */
   state.sockfd = create_server_socket(port);
   if (state.sockfd < 0) return 1;
+
+  // Initialize HTTP server
+  if(doWebserver){
+    protht_init();
+    state.httpsock = create_server_socket(443);
+    if (state.httpsock < 0) {
+      printf("[web] Warning! Could not create https port 443, maybe run with sudo?\n");
+    }
+  }
 
   /* wait for connections */
   for (;;) {

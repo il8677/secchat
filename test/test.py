@@ -504,8 +504,6 @@ interact(sourcedir, tmpdir, 1, gen_callback_check_logged_unavailable_commands("/
 # whitespace tests
 interact(sourcedir, tmpdir, 1, callback_check_whitespaces, "testing if whitespaces are handled correctly ...")
 
-# TODO upcomming hardcore send private/public messages
-
 # check whether any files were modified that should not have been
 filesafter = list_files_mtimes(sourcedir)
 check_files(sourcedir, filesbefore, filesafter)

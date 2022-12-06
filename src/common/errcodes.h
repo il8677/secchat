@@ -19,4 +19,6 @@
 #define ERR_PASSWORD_TOOLONG -16 //given password is too long
 #define ERR_INVALID_NR_ARGS -17 //too many arguments were given
 
+#define ERR_CERT_AUTHENTICITY -18 // Certificate invalid
+
 #endif

@@ -2,26 +2,70 @@
 
 CFLAGS=-g -Wall -Werror -UDEBUG
 LDLIBS=-lsqlite3 -lcrypto -lssl
+#LDFLAGS=-fsanitize=address
 
 all: client server
 
+# TODO: fix this mess
+
 clean:
 	rm -f server client *.o *.db*
+	rm -rf serverkeys ttpkeys clientkeys
 
-ui.o: ui.c ui.h
+ui.o: src/client/ui.c src/client/ui.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-client.o: client.c api.h ui.h util.h
+protwb.o: src/server/protocols/prot_websockets.c src/server/protocols/prot_websockets.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-api.o: api.c api.h 
+sslnonblock.o: vendor/ssl-nonblock.c vendor/ssl-nonblock.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-db.o: db.c db.h errcodes.h api.h
+crypto.o: src/util/crypto.c
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-server.o: server.c util.h db.h errcodes.h
+workerapi.o: src/server/worker/workerapi.c src/server/worker/workerapi.h src/server/protocols/prot_client.c
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-util.o: util.c util.h
+protc.o: src/server/protocols/prot_client.c src/server/protocols/prot_client.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-worker.o: worker.c util.h worker.h errcodes.h db.h
+client.o: src/client/client.c src/common/api.h src/client/ui.h src/util/util.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-client: client.o api.o ui.o util.o
+api.o: src/common/api.c src/common/api.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
 
-server: server.o api.o util.o worker.o db.o
+route.o: src/server/webserver/route.c src/server/webserver/route.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+httputil.o: src/server/webserver/httputil.c src/server/webserver/httputil.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+protht.o: src/server/protocols/prot_http.c src/server/protocols/prot_http.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+db.o: src/server/db.c src/server/db.h src/common/api.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+server.o: src/server/server.c src/util/util.h src/server/db.h api.o keys-server
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+util.o: src/util/util.c src/util/util.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+linkedlist.o: src/util/linkedlist.c src/util/linkedlist.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+worker.o: src/server/worker/worker.c src/util/util.h src/server/worker/worker.h src/server/db.h src/server/worker/workerapi.h
+	$(CC) $(CFLAGS) $(LDLIBS) -c -o $@ $<
+
+client: sslnonblock.o client.o api.o ui.o util.o crypto.o linkedlist.o
+
+server: sslnonblock.o server.o api.o util.o worker.o db.o workerapi.o protc.o protht.o route.o httputil.o linkedlist.o protwb.o crypto.o
+
+keys-server: keys-ttp
+	python3 ttp.py -s
+
+keys-ttp:
+	python3 ttp.py -ca

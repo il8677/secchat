@@ -1,0 +1,29 @@
+body,
+html {
+    height: 100vh;
+    width: 100vw;
+}
+
+div {
+    border-spacing: 10px;
+}
+
+form > * {
+    margin-top: 10px;
+}
+
+.mainbox {
+    overflow:hidden;
+    width:700px; 
+    height:600px; 
+    border: 1px solid blue;
+}
+
+.message {
+    text-align: left;
+}
+
+#chat{
+    height: 325px;
+    overflow-y: scroll;
+}
