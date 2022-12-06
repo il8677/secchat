@@ -74,7 +74,7 @@ The fields for each message type is stored in a union, so an entire api_msg is t
 There are three situations where this data is sent, the first is when a user registers/logs in, their (encrypted) private key and public key is sent to/from the server. The second is a key request, where the client (who presumably wants to send a private message) asks for a users certificate to encrypt the private message for the other user. The last situation is where the server sends a public or private message to a client, where it attatches the certificate of the message sender so the client can verify the message (using the TTPs public key). This will only be done once per sender, it is assumed the client stores the certificate for future use.
 
 ### Handling
-Depending on the message recieved, and if it is server or clientside, the message is handled differently. A who message recieved by the server is treated as a request, and a who message is sent back with the string field filled in. The client will then handle it by printing the string. The various handlers in ui.c create messages from user input, called on in the function client_process_command (client.c). The server handles all messages in execute_request (worker.c). The client handles all messages from the server in execute_request (client.c).
+Depending on the message received, and if it is server or clientside, the message is handled differently. A who message recieved by the server is treated as a request, and a who message is sent back with the string field filled in. The client will then handle it by printing the string. The various handlers in ui.c create messages from user input, called on in the function client_process_command (client.c). The server handles all messages in execute_request (worker.c). The client handles all messages from the server in execute_request (client.c).
 
 # Security
 
@@ -103,7 +103,8 @@ Again this comes down to the signing. If even only a single character gets chang
 ### Mallory cannot find out users’ passwords, private keys, or private messages (even if the server is compromised).
 The database only stores hashed passwords. Even if the server is compromised Mallory cannot do much with this information as Mallory cannot undo the hash. Private keys are stored encrypted with the password using AES. Assuming that the password is indeed safe there is no way for Mallory to decrypt the private key. Then assumming that both the password and the private key are safe Mallory cannot decrypt the private messages as it does not have the private key. Note: the private keys could be brute forced if the user sets a bad password.
 
-### Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on.
+### Mallory cannot use the client or server programs to achieve privilege escalation on the systems they are running on. TODO: answer
+
 ### Mallory cannot leak or corrupt data in the client or server programs.
 Well assuming that Mallory can compromise the server she actually could corrupt the data. However because of the signature the user/client would know that the data has been corrupted. The best effort was made to prevent any buffer overflows and we believe there shouldn't be a way to gain access to the systems through this program.
 
