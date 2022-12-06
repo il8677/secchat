@@ -6,7 +6,7 @@ The following list should be helpful to discern what each file is responsible fo
 ### Server
 
 |   File Name               | Purpose                                                           |
--------------------------------------------------------------------------------------------------
+|---------------------------|-------------------------------------------------------------------|
 | server.c                  | The main server file, accepts connections and spawns workers      |
 | db.c/h                    | API for dealing with the database                                 |
 | apicallbacks.h            | Definitions for the protocol api callbacks                        |
@@ -21,7 +21,7 @@ The following list should be helpful to discern what each file is responsible fo
 ### Other
 
 |   File Name               | Purpose                                                           |
--------------------------------------------------------------------------------------------------
+|---------------------------|-------------------------------------------------------------------|
 | client.c                  | The client file                                                   |
 | ui.h/c                    | Gets and processes user input, called by the client               |
 | api.h/c                   | The common structs / functions used by both server / client       |
