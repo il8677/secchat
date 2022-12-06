@@ -9,9 +9,10 @@
 #include "../../../vendor/ssl-nonblock.h"
 
 void sendContentHeader(SSL* ssl, int fd, int length){
-    static const char header[] = "HTTP/1.1 200 OK\nconnection: keep-alive\ncontent-length: %d\n\n";
+    // This used to be keep-alive, but it stopped working and firefox kept requesting things on seperate connections randomly, so now we close 
+    static const char header[] = "HTTP/1.1 200 OK\nconnection: close\ncontent-length: %d\n\n";
 
-    char formatted[sizeof(header)+5]; // TODO: do this better
+    char formatted[sizeof(header)+10];
 
     sprintf(formatted, header, length);
 
@@ -33,7 +34,6 @@ void send400(SSL* ssl, int fd){
 /// @brief Converts an api_msg to json format, encodes encrypted fields in b64
 /// @return A dynamically allocated address where the json string is
 // messy function, but I dont know if its possible to do formatting functions in a clean way
-// Big mallocs too, but json uses b64 to encode binary data
 char* api_msg_to_json(struct api_msg* msg){
     char* priv = NULL;    
     unsigned int jsonLoc = 0; // Keep track of where in the buffer we have written to
@@ -48,12 +48,11 @@ char* api_msg_to_json(struct api_msg* msg){
 
     char* json;
     
-    //TODO: Space limiters
     // Main message
     switch(msg->type){
         case ERR:
             json = malloc(allocatedSize);
-            jsonLoc += sprintf(json, "{\"type\": %d, \"errcode\": %d", msg->type, msg->errcode);
+            jsonLoc += snprintf(json, "{\"type\": %d, \"errcode\": %d", msg->type, msg->errcode);
             break;
         case STATUS:
             allocatedSize += sizeof(msg->status.statusmsg);
@@ -64,7 +63,7 @@ char* api_msg_to_json(struct api_msg* msg){
             // This inefficient, because we're copying a lot of buffers instead of just writing a buffer once, but it's good enough
 
             // b64 encrypted fields
-            char* frommssg; // We dont need tomsg since server->client messages only contain the one field
+            char* frommssg; // We dont need tomsg since server->client messages only contain this one field
             char* signature;
 
             Base64Encode((unsigned char*)msg->priv_msg.signature, MAX_ENCRYPT_LEN, &signature);
@@ -119,7 +118,6 @@ char* api_msg_to_json(struct api_msg* msg){
     }
 
     // Attach extra data
-
     if(msg->encPrivKeyLen){
         jsonLoc += sprintf(json + jsonLoc, ", \"privkey\": \"%s\"", priv);
     }
