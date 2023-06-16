@@ -1,5 +1,12 @@
-
 # General Overview
+Cryptographically secure chat application
+
+## Features
+- End to end encryption and signing, via public/private keys
+- Ability to create accounts, login, send messages (direct messages + broadcast messages), recieve messages
+- "Worker API", which allows for the easy additions of new protocols
+- HTTPs server and websockets implemented with the Worker API, allowing users to use the system with the browser
+
 ## File structure
 The following list should be helpful to discern what each file is responsible for at a glance
 
@@ -28,6 +35,83 @@ The following list should be helpful to discern what each file is responsible fo
 | crypto.h/c                | Functions to handle cryptography                                  |
 | linkedlist.h/c            | Linked list functions                                             |
 | util.h/c                  | General utility functins                                          |
+
+# Client details
+## client initialization 
+When we initialize the client we connect to the server and check the server's certificate. If everything is fine we start the ssl handsake. When initializing we also create two linked lists. One we use to store certificates from other users. The other is used as a queue to temporarily store private messages we don't have keys to encrypt yet.
+
+## parsing input (client_process_command, client.c)
+The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct within the api_message. If the message is too long, the command is invalid or the amount of arguments is invalid we give an error and ask them to try again. Depending on the command a handler function is then called. 
+
+## preparing message
+Depending on the command different steps are taken.
+
+-   ### register (input_handle_register| ui.c)    
+    When register is called we first check if the password and/or the username is valid (not empty). We hash the password with the username as salt, generate a private/public key pair and request a certificate from the CA. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it, it's also a pretty neat solution, albeit less secure). If the username was already taken the server asks the user to use a different username.
+
+-   ### login  (input_handle_login| ui.c)  
+    After login is called we hash the password with the username as salt and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and then encrypt and decrypt a test string to verify the keys. This ensures that we have the same keypair every time even when logging in from different devices, and makes sure the server isn't sending us a fake keypair with a known private key. (loginAck| client.c) 
+    
+-   ### private message (input_handle_privmsg| ui.c)
+    To send a private message we have to get the public key of the recipient so we can encrypt the message (using RSA). This limits the message length, but we had a 160 byte message length limit anyway. We first look through the local key cache. If the key is not found in the linked list we request the key from the server and put the to be transmitted message in a queue (linked list) so we can send the message whenever we receive the key. When we receive the key (execute_request, handle_key| client.c) the authenticity of the certificate is verified. The key is then added to the key cache and we go through the queue to see if there is a message we can now send with the key. Regardless of whether we already had the key or just got the key from the server we sign the message (hash and encrypt with our private key), encrypt a copy of the message with the recipients public key and a copy of the message with our own public key. These messages and the signature are then send to the server. 
+
+-   ### public message (input_handle_pubmsg| ui.c)
+    When sending a public message we use RSA digital signatures to make sure that what we send is not tampered with during transmission. We first compute the hash of the message and encrypt it with the sender's (our own) private key. Then we send the encrypted hash and the message over the wire where the receiving end computes the hash of the message and verifies the message by decrypting the signature using the senders public key. If the key was not sent before, the server adds the certificate of the sender to the message and after checking for validity the recipient can extract the key. If the computed hash and the decryption of the signature are equal then the signature is correct and the message has not been tampered with.
+
+-   ### users 
+    No cryptography happens for the user call, we just set the message type and send it.
+
+-   ### exit 
+    No cryptography happens for the exit call either, we just set the message type and send it.
+
+# Server Details
+## server and worker
+The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify any requests incoming. The checks ensure the safety of the message and is disccussed later. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track of with a block of shared memory, which the workers access when building the response to a /users command.
+
+## wrapping up
+If a message was received, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then decrypts and displays the correct message. Keys are handled differently as described in public and private messaging.   
+
+## Worker API
+
+Originally, the implementation was that the client sent the bytes of a local api_msg to the server, and vice versa. This worked well with just the native client, but when adding the HTTP protocol this was insufficient, as the server was quite rigid in only accepting api_msgs over the socket. To solve this, the server implementation was split into two parts: the _protocols_ and the _worker api_, instead of just having the worker. 
+
+With this, the main server logic (the worker api) is designed to be protocol agnostic. The code to interact with api_msg's is defined in workerapi.h. The different _protocols_ (in the directory protocols/) handle interfacing with the different types of connections, forming api_msgs out of them and giving it to the worker_api to handle. Instead of the worker directly sending/recieving from sockets like before, The worker API interacts with protocol-specific function callbacks to send / recieve api_msgs (apicallbacks.h). This forms a sort of stack, with the lower transport-like layer dealing with protocol-based communications (ex. native/websockets), and the upper layer dealing with the actual requests, including forming api_msgs for the lower layer to send. The server spawns the appropriate worker to deal with different protocols depending on how a connection is established (server.c:handle_incoming). This also allows workers to dynamically change protocols. For example, the http protocol implementation replaces itself with the websocket api callbacks, passing control to the websocket protocol implementation.
+
+This was done for the support of HTTP, to allow for the different protocol in a clean way, but in theory this means the application should be easily expandable to other protocols such as IRC.
+
+                                                    ---------------
+                                                    |     db      |
+                                                    ---------------
+                                                    |  workerapi  |  ^   
+                            ----------   spawns     ---------------  | send, recv
+                            | server | -----------> |  http | api |  v
+                            ----------   worker     ---------------     
+                                                    |     SSL     |
+                                                    ----|-----|----
+                                                        V     V  TCP
+                                                    ---------------
+                                                    |browsr|client|
+                                                    ---------------
+
+# HTTP Server
+The HTTP server allows people to connect to the server and use the services with their browser. This is off by default, but if a second argument is present when running the server, it will be ran on port 443 (default for HTTPS). It can be accessed at https://localhost/ (*ON FIREFOX*. Chrome doesn't work because of its security protocols). Opening 443 requires the program to be ran with sudo, although the port can be changed in the initialization of server.c. Implemented is a basic webserver which serves web pages in the www/ directory. Routes and HTTP handling are setup in prot_http.c and route.h. POST requests were also implemented but are not used in favour of websockets, which are implemented in prot_wb.c. The connection is made and the javascript logic upgrades the connection to websockets, which is used to talk to the server.
+The web interface itself is a bit janky, since CSS is not fun, but it is functionally OK. All security measures the native client has have also been implemented in the web client (with the exception of TLS certificate verificaiton, since that is handled by the browser).
+
+## PLEASE NOTE
+1. The web client gets the TTP certificate from the server via HTTP request, this is obviously unsafe, and could be forged by the server. In a real situation the CA would be a real one that systems have access to anyway. This only affects verifying the certificates other users (which does have implications for the other security measures), but I could not think of a proper way to distribute this certificate to the webclient, but since the native client is assumed to have safe access to it, I assumed that serving it from the server would also be an OK shortcut, and it could be assumed that the server is unable to forge the CA for whatever reason.
+2. Registration is not possible using the web interface; One must log in with a user created from the CLI. This is because registration requires the generation of an RSA key pair and the signing from the TTP, and from a web interface there is no simple way to access the ttp script.
+
+## Implementation
+The serverside websockets protocol implementation encodes outgoing messages in JSON, sending it to the web client. The web client sends direct bytes, which are read into an api_msg. The difference in the ways messages are conveyed is because formatting json is much easier than parsing it. The rest is the same on the serverside, as the websocket protocol implementation translates incoming messages to api_msgs that the worker api can handle.
+
+## Full steps to see the web page
+1. Run the server with (any) third argument, with the second argument indicating the port for the CLI client: `sudo ./server 2345 Y`
+2. Create an account in the CLI (connecting as usual): `/register username password`
+3. Open the URL in firefox (tested on the latest version, fresh install/no extensions or settings changed) `https://localhost`
+4. Since the certificate was signed by a made-up CA, you will have to click past the warning screen
+
+## Security considerations
+Javascript is much easier to program for security, since you can't buffer overflow. The worst that can happen is an error message and some function wont work properly. However, there were additional challenges involved when talking about data representation. Since the javascript receives json, it was possible to send messages with characters such as " to escape from the json. The solution to this was to encode everything in base64.
 
 ## Communication
 The server and native (non-web) client deals with api_msgs, which come in different types and contains all the information for a request / response (messages for example). The client and server  communicate by sending/recieving the api_msg instance directly over sockets. The type is indicated by an enum (msg_type_t), and indicate different structs in a union within an api_msg object that has been filled out.
@@ -110,7 +194,7 @@ Well assuming that Mallory can compromise the server she actually could corrupt 
 ### Mallory cannot crash the client or server programs.
 The best effort was made to prevent buffer overflows. Aside from big DDOS attacks, it should be safe.
 
-### The programs must never expose any information from the systems they run on, beyond what is required for the program to meet the requirements in the assignments.
+### The programs must never expose any information from the systems they run on, beyond what is required for the program to meet the requirements.
 The best effort was made to prevent buffer overflows. Besides this, and aside from side-channels, it should not be possible to discern system information with the program.
 
 ### The programs must be unable to modify any files except for chat.db and the contents of the clientkeys and clientkeys directories, or any operating system settings, even if Mallory attempts to force it to do so. 
@@ -130,80 +214,3 @@ Safe functions are used instead of their unsafe versions (strnlen vs strlen), un
 ### Padding oracle attack
 The defense of this attack is handled by openSSL. No AES decryption happens from the server so it's impossible to gain access to AES information from there.
 
-
-# Client details
-## client initialization 
-When we initialize the client we connect to the server and check the server's certificate. If everything is fine we start the ssl handsake. When initializing we also create two linked lists. One we use to store certificates from other users. The other is used as a queue to temporarily store private messages we don't have keys to encrypt yet.
-
-## parsing input (client_process_command, client.c)
-The client starts with seperating the command from the message in "client_process_command". The command and message gets stored in their respective struct within the api_message. If the message is too long, the command is invalid or the amount of arguments is invalid we give an error and ask them to try again. Depending on the command a handler function is then called. 
-
-## preparing message
-Depending on the command different steps are taken.
-
--   ### register (input_handle_register| ui.c)    
-    When register is called we first check if the password and/or the username is valid (not empty). We hash the password with the username as salt, generate a private/public key pair and request a certificate from the CA. This private key is then encrypted using the password. The hashed password, the certificate and the encrypted private key are then ready to be send to the server. This is so that whenever the user logs in from a different device they can retrieve their own keys from the server (Apparently this was not necessary as the professor indicated later that we could assume the user manually copies over their keys but we already implemented it, it's also a pretty neat solution, albeit less secure). If the username was already taken the server asks the user to use a different username.
-
--   ### login  (input_handle_login| ui.c)  
-    After login is called we hash the password with the username as salt and send it with the username to the server. If the combination is valid we receive our certificate and encrypted private key back from the server. We decrypt the private key with our password and then encrypt and decrypt a test string to verify the keys. This ensures that we have the same keypair every time even when logging in from different devices, and makes sure the server isn't sending us a fake keypair with a known private key. (loginAck| client.c) 
-    
--   ### private message (input_handle_privmsg| ui.c)
-    To send a private message we have to get the public key of the recipient so we can encrypt the message (using RSA). This limits the message length, but we had a 160 byte message length limit anyway. We first look through the local key cache. If the key is not found in the linked list we request the key from the server and put the to be transmitted message in a queue (linked list) so we can send the message whenever we receive the key. When we receive the key (execute_request, handle_key| client.c) the authenticity of the certificate is verified. The key is then added to the key cache and we go through the queue to see if there is a message we can now send with the key. Regardless of whether we already had the key or just got the key from the server we sign the message (hash and encrypt with our private key), encrypt a copy of the message with the recipients public key and a copy of the message with our own public key. These messages and the signature are then send to the server. 
-
--   ### public message (input_handle_pubmsg| ui.c)
-    When sending a public message we use RSA digital signatures to make sure that what we send is not tampered with during transmission. We first compute the hash of the message and encrypt it with the sender's (our own) private key. Then we send the encrypted hash and the message over the wire where the receiving end computes the hash of the message and verifies the message by decrypting the signature using the senders public key. If the key was not sent before, the server adds the certificate of the sender to the message and after checking for validity the recipient can extract the key. If the computed hash and the decryption of the signature are equal then the signature is correct and the message has not been tampered with.
-
--   ### users 
-    No cryptography happens for the user call, we just set the message type and send it.
-
--   ### exit 
-    No cryptography happens for the exit call either, we just set the message type and send it.
-
-# Server Details
-## server and worker
-The server creates a worker process (if the limit has not been reached) on the inital connection. The worker will then check if the user is logged in and authenticate and verify any requests incoming. The checks ensure the safety of the message and is disccussed later. After the checks the worker thread will execute the command in "execute_request"(worker.c). Here, depending on the command, the worker makes the appropriate database calls (db.c). The user assigned to each worker is kept track of with a block of shared memory, which the workers access when building the response to a /users command.
-
-## wrapping up
-If a message was received, the worker notifies the server which notifies the other workers. The worker is responsible for sending back appropriate messages to the clients. In "execute_request"(client.c) the client, depending on the message type then decrypts and displays the correct message. Keys are handled differently as described in public and private messaging.   
-
-## Worker API
-
-Originally, the implementation was that the client sent the bytes of a local api_msg to the server, and vice versa. This worked well with just the native client, but when adding the HTTP protocol this was insufficient, as the server was quite rigid in only accepting api_msgs over the socket. To solve this, the server implementation was split into two parts: the _protocols_ and the _worker api_, instead of just having the worker. 
-
-With this, the main server logic (the worker api) is designed to be protocol agnostic. The code to interact with api_msg's is defined in workerapi.h. The different _protocols_ (in the directory protocols/) handle interfacing with the different types of connections, forming api_msgs out of them and giving it to the worker_api to handle. Instead of the worker directly sending/recieving from sockets like before, The worker API interacts with protocol-specific function callbacks to send / recieve api_msgs (apicallbacks.h). This forms a sort of stack, with the lower transport-like layer dealing with protocol-based communications (ex. native/websockets), and the upper layer dealing with the actual requests, including forming api_msgs for the lower layer to send. The server spawns the appropriate worker to deal with different protocols depending on how a connection is established (server.c:handle_incoming). This also allows workers to dynamically change protocols. For example, the http protocol implementation replaces itself with the websocket api callbacks, passing control to the websocket protocol implementation.
-
-This was done for the bonus HTTP assignment, to allow for the different protocol in a clean way, but in theory this means the application should be easily expandable to other protocols such as IRC.
-
-                                                    ---------------
-                                                    |     db      |
-                                                    ---------------
-                                                    |  workerapi  |  ^   
-                            ----------   spawns     ---------------  | send, recv
-                            | server | -----------> |  http | api |  v
-                            ----------   worker     ---------------     
-                                                    |     SSL     |
-                                                    ----|-----|----
-                                                        V     V  TCP
-                                                    ---------------
-                                                    |browsr|client|
-                                                    ---------------
-
-# Bonus
-A webclient was implemented for this assignment. This is off by default, but if a second argument is present when running the server, it will be ran on port 443 (default for HTTPS). It can be accessed at https://localhost/ (*ON FIREFOX*, as per the assignment. Chrome doesn't work for some reason). Opening 443 requires the program to be ran with sudo, although the port can be changed in the initialization of server.c. Implemented is a basic webserver which serves web pages in the www/ directory. Routes and HTTP handling are setup in prot_http.c and route.h. POST requests were also implemented but are not used in favour of websockets, which are implemented in prot_wb.c. The connection is made and the javascript logic upgrades the connection to websockets, which is used to talk to the server.
-The web interface itself is a bit janky, since CSS is not fun, but it is functionally OK. All security measures the native client has have also been implemented in the web client (with the exception of TLS certificate verificaiton, since that is handled by the browser).
-
-## PLEASE NOTE
-1. The web client gets the TTP certificate from the server via HTTP request, this is obviously unsafe, and could be forged by the server. In a real situation the CA would be a real one that systems have access to anyway. This only affects verifying the certificates other users (which does have implications for the other security measures), but I could not think of a proper way to distribute this certificate to the webclient, but since the native client is assumed to have safe access to it, I assumed that serving it from the server would also be an OK shortcut, and it could be assumed that the server is unable to forge the CA for whatever reason.
-2. Registration is not possible using the web interface; One must log in with a user created from the CLI. This is because registration requires the generation of an RSA key pair and the signing from the TTP, and from a web interface there is no simple way to access the ttp script.
-
-## Implementation
-The serverside websockets protocol implementation encodes outgoing messages in JSON, sending it to the web client. The web client sends direct bytes, which are read into an api_msg. The difference in the ways messages are conveyed is because formatting json is much easier than parsing it. The rest is the same on the serverside, as the websocket protocol implementation translates incoming messages to api_msgs that the worker api can handle.
-
-## Full steps to see the web page
-1. Run the server with (any) third argument, with the second argument indicating the port for the CLI client: `sudo ./server 2345 Y`
-2. Create an account in the CLI (connecting as usual): `/register username password`
-3. Open the URL in firefox (tested on the latest version, fresh install/no extensions or settings changed) `https://localhost`
-4. Since the certificate was signed by a made-up CA, you will have to click past the warning screen
-
-## Security considerations
-Javascript is much easier to program for security, since you can't buffer overflow. The worst that can happen is an error message and some function wont work properly. However, there were additional challenges involved when talking about data representation. Since the javascript receives json, it was possible to send messages with characters such as " to escape from the json. The solution to this was to encode everything in base64.
